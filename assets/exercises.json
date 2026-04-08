@@ -1,0 +1,298 @@
+{
+  "exercises": [
+    {
+      "id": "neck_chin_tucks",
+      "title": "Chin Tucks",
+      "bodyPart": "Neck",
+      "difficulty": "Easy",
+      "durationSeconds": 60,
+      "instructions": [
+        "Sit tall with shoulders relaxed.",
+        "Gently pull your chin straight back (make a double-chin).",
+        "Hold 3 seconds, then relax.",
+        "Repeat slowly."
+      ]
+    },
+    {
+      "id": "neck_rotations",
+      "title": "Neck Rotations",
+      "bodyPart": "Neck",
+      "difficulty": "Easy",
+      "durationSeconds": 60,
+      "instructions": [
+        "Turn your head to look over your right shoulder.",
+        "Hold 5 seconds, return to center.",
+        "Repeat to the left.",
+        "Keep shoulders down."
+      ]
+    },
+    {
+      "id": "neck_ear_to_shoulder",
+      "title": "Ear-to-Shoulder Stretch",
+      "bodyPart": "Neck",
+      "difficulty": "Easy",
+      "durationSeconds": 60,
+      "instructions": [
+        "Tilt your right ear toward your right shoulder.",
+        "Hold 15 seconds, switch sides.",
+        "Do not raise your shoulder."
+      ]
+    },
+    {
+      "id": "neck_flexion_extension",
+      "title": "Neck Flexion and Extension",
+      "bodyPart": "Neck",
+      "difficulty": "Easy",
+      "durationSeconds": 60,
+      "instructions": [
+        "Slowly tuck chin and look down.",
+        "Return to neutral, then gently look up.",
+        "Move within a comfortable range."
+      ]
+    },
+    {
+      "id": "neck_scm_stretch",
+      "title": "SCM Stretch",
+      "bodyPart": "Neck",
+      "difficulty": "Medium",
+      "durationSeconds": 60,
+      "instructions": [
+        "Turn head to the right and slightly look up.",
+        "Place left hand on collarbone to anchor.",
+        "Hold 15 seconds, switch sides."
+      ]
+    },
+    {
+      "id": "neck_levator_scapulae",
+      "title": "Levator Scapulae Stretch",
+      "bodyPart": "Neck",
+      "difficulty": "Medium",
+      "durationSeconds": 60,
+      "instructions": [
+        "Turn head 45 degrees to the right.",
+        "Look down toward your armpit.",
+        "Hold 15 seconds, switch sides."
+      ]
+    },
+
+    {
+      "id": "back_cat_cow",
+      "title": "Cat-Cow Stretch",
+      "bodyPart": "Back",
+      "difficulty": "Easy",
+      "durationSeconds": 120,
+      "instructions": [
+        "Sit or stand with hands on thighs.",
+        "Inhale: lift chest and arch back gently.",
+        "Exhale: round spine and tuck chin.",
+        "Move slowly with breath."
+      ]
+    },
+    {
+      "id": "back_seated_spinal_twist",
+      "title": "Seated Spinal Twist",
+      "bodyPart": "Back",
+      "difficulty": "Easy",
+      "durationSeconds": 120,
+      "instructions": [
+        "Sit tall, feet flat.",
+        "Rotate torso to the right, hold 15 seconds.",
+        "Repeat to the left.",
+        "Keep hips facing forward."
+      ]
+    },
+    {
+      "id": "back_thoracic_extension",
+      "title": "Thoracic Extension",
+      "bodyPart": "Back",
+      "difficulty": "Medium",
+      "durationSeconds": 120,
+      "instructions": [
+        "Interlace fingers behind head.",
+        "Gently open elbows and lift chest.",
+        "Hold 10 seconds, repeat."
+      ]
+    },
+    {
+      "id": "back_lumbar_decompression",
+      "title": "Lumbar Decompression",
+      "bodyPart": "Back",
+      "difficulty": "Medium",
+      "durationSeconds": 120,
+      "instructions": [
+        "Stand and place hands on hips.",
+        "Gently lean back a few centimeters.",
+        "Hold 2 seconds and return.",
+        "Repeat slowly."
+      ]
+    },
+    {
+      "id": "back_glute_bridges",
+      "title": "Glute Bridges (Desk Version)",
+      "bodyPart": "Back",
+      "difficulty": "Medium",
+      "durationSeconds": 120,
+      "instructions": [
+        "Stand and squeeze glutes for 3 seconds.",
+        "Relax for 3 seconds.",
+        "Repeat."
+      ]
+    },
+    {
+      "id": "back_pelvic_tilts",
+      "title": "Pelvic Tilts",
+      "bodyPart": "Back",
+      "difficulty": "Easy",
+      "durationSeconds": 120,
+      "instructions": [
+        "Sit tall.",
+        "Tilt pelvis forward then back.",
+        "Keep movement small and controlled."
+      ]
+    },
+    {
+      "id": "back_hip_flexor",
+      "title": "Hip Flexor Stretch",
+      "bodyPart": "Back",
+      "difficulty": "Medium",
+      "durationSeconds": 120,
+      "instructions": [
+        "Stand and step one foot back.",
+        "Tuck pelvis slightly and feel front-hip stretch.",
+        "Hold 20 seconds, switch sides."
+      ]
+    },
+    {
+      "id": "back_piriformis",
+      "title": "Piriformis Stretch (Seated)",
+      "bodyPart": "Back",
+      "difficulty": "Medium",
+      "durationSeconds": 120,
+      "instructions": [
+        "Sit and cross right ankle over left knee.",
+        "Lean forward slightly.",
+        "Hold 20 seconds, switch sides."
+      ]
+    },
+
+    {
+      "id": "wrist_circles",
+      "title": "Wrist Circles",
+      "bodyPart": "Wrist",
+      "difficulty": "Easy",
+      "durationSeconds": 45,
+      "instructions": [
+        "Extend arms forward.",
+        "Rotate wrists clockwise 15 seconds, then counterclockwise."
+      ]
+    },
+    {
+      "id": "wrist_prayer_stretch",
+      "title": "Prayer Stretch",
+      "bodyPart": "Wrist",
+      "difficulty": "Easy",
+      "durationSeconds": 45,
+      "instructions": [
+        "Place palms together at chest.",
+        "Lower hands slowly while keeping palms together.",
+        "Hold 15 seconds."
+      ]
+    },
+    {
+      "id": "wrist_reverse_prayer",
+      "title": "Reverse Prayer Stretch",
+      "bodyPart": "Wrist",
+      "difficulty": "Medium",
+      "durationSeconds": 45,
+      "instructions": [
+        "Place hands behind back, palms together if possible.",
+        "Hold 10–15 seconds.",
+        "Do not force range."
+      ]
+    },
+    {
+      "id": "wrist_finger_flexor",
+      "title": "Finger Flexor Stretch",
+      "bodyPart": "Wrist",
+      "difficulty": "Easy",
+      "durationSeconds": 45,
+      "instructions": [
+        "Arm straight, palm up.",
+        "Gently pull fingers back with other hand.",
+        "Hold 15 seconds, switch sides."
+      ]
+    },
+    {
+      "id": "wrist_pronation_supination",
+      "title": "Pronation and Supination",
+      "bodyPart": "Wrist",
+      "difficulty": "Easy",
+      "durationSeconds": 45,
+      "instructions": [
+        "Elbow at 90 degrees.",
+        "Rotate palm up and down slowly.",
+        "Repeat."
+      ]
+    },
+
+    {
+      "id": "eyes_202020",
+      "title": "20-20-20 Reset",
+      "bodyPart": "Eyes",
+      "difficulty": "Easy",
+      "durationSeconds": 20,
+      "instructions": [
+        "Look at something 20 feet away.",
+        "Hold for 20 seconds.",
+        "Breathe and relax shoulders."
+      ]
+    },
+    {
+      "id": "eyes_palming",
+      "title": "Palming",
+      "bodyPart": "Eyes",
+      "difficulty": "Easy",
+      "durationSeconds": 30,
+      "instructions": [
+        "Rub palms to warm them.",
+        "Place palms gently over closed eyes.",
+        "Hold 20–30 seconds."
+      ]
+    },
+    {
+      "id": "eyes_eye_rolls",
+      "title": "Eye Rolls",
+      "bodyPart": "Eyes",
+      "difficulty": "Easy",
+      "durationSeconds": 30,
+      "instructions": [
+        "Look up, then slowly circle eyes around.",
+        "Repeat in both directions."
+      ]
+    },
+    {
+      "id": "eyes_near_far",
+      "title": "Near-Far Focus",
+      "bodyPart": "Eyes",
+      "difficulty": "Easy",
+      "durationSeconds": 45,
+      "instructions": [
+        "Focus on a near object for 5 seconds.",
+        "Switch focus to a far object for 5 seconds.",
+        "Repeat."
+      ]
+    },
+    {
+      "id": "eyes_figure8",
+      "title": "Figure-8 Tracking",
+      "bodyPart": "Eyes",
+      "difficulty": "Medium",
+      "durationSeconds": 45,
+      "instructions": [
+        "Trace an imaginary figure-8 with your eyes.",
+        "Move slowly and smoothly."
+      ]
+    }
+  ]
+}
+
