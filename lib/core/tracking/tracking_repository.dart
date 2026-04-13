@@ -1,21 +1,22 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../supabase/supabase_bootstrap.dart';
+import '../firebase/firebase_bootstrap.dart';
 
 class TrackingRepository {
-  TrackingRepository(this._client);
+  TrackingRepository(this._firestore);
 
-  final SupabaseClient _client;
+  final FirebaseFirestore _firestore;
 
   Future<void> trackEvent({
     required String type,
     Map<String, dynamic>? data,
   }) async {
     try {
-      await _client.from('tracking_events').insert({
+      await _firestore.collection('tracking_events').add({
         'type': type,
         'data': data ?? <String, dynamic>{},
+        'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (error) {
       debugPrint('Failed to track event "$type": $error');
@@ -27,17 +28,23 @@ class TrackingRepository {
     required String type,
     Map<String, dynamic>? data,
   }) async {
-    final client = SupabaseBootstrap.clientOrNull;
-    if (client == null) return;
-    if (client.auth.currentSession == null) return;
+    final firestore = FirebaseBootstrap.firestoreOrNull;
+    final auth = FirebaseBootstrap.authOrNull;
+    final user = auth?.currentUser;
+    if (firestore == null || user == null) return;
 
     try {
-      await client.from('tracking_events').insert({
-        'type': type,
-        'data': data ?? <String, dynamic>{},
-      });
+      await firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('tracking_events')
+          .add({
+            'type': type,
+            'data': data ?? <String, dynamic>{},
+            'createdAt': FieldValue.serverTimestamp(),
+          });
     } catch (error) {
-      debugPrint('Failed to sync event "$type" to Supabase: $error');
+      debugPrint('Failed to sync event "$type" to Firebase: $error');
     }
   }
 }

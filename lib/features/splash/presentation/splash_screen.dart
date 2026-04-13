@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnim;
   late Animation<double> _textFadeAnim;
   late Animation<double> _circleFadeAnim;
+  Timer? _routeTimer;
 
   @override
   void initState() {
@@ -71,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Future.delayed(const Duration(milliseconds: 3000), () {
+    _routeTimer = Timer(const Duration(milliseconds: 3000), () {
       if (!mounted) return;
       _routeNext();
     });
@@ -86,6 +88,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _routeTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -93,7 +96,9 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final diagonal = math.sqrt(size.width * size.width + size.height * size.height);
+    final diagonal = math.sqrt(
+      size.width * size.width + size.height * size.height,
+    );
     final fillBaseSize = 220.0;
     final maxFillScale = (diagonal / fillBaseSize) * 1.15;
 
@@ -113,10 +118,7 @@ class _SplashScreenState extends State<SplashScreen>
                   gradient: RadialGradient(
                     center: Alignment(0.6, -0.6),
                     radius: 1.2,
-                    colors: [
-                      Color(0xFFF7FBF8),
-                      Color(0xFFEFF6FF),
-                    ],
+                    colors: [Color(0xFFF7FBF8), Color(0xFFEFF6FF)],
                   ),
                 ),
               ),
@@ -178,11 +180,13 @@ class _SplashScreenState extends State<SplashScreen>
                                   child: Image.asset(
                                     'assets/app_logo.png',
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(
-                                      Icons.spa_rounded,
-                                      size: 100,
-                                      color: Color(0xFF2D6A4F),
-                                    ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(
+                                              Icons.spa_rounded,
+                                              size: 100,
+                                              color: Color(0xFF2D6A4F),
+                                            ),
                                   ),
                                 ),
                               ),
@@ -212,8 +216,9 @@ class _SplashScreenState extends State<SplashScreen>
                           Text(
                             'Your wellness companion',
                             style: TextStyle(
-                              color:
-                                  const Color(0xFF2D5016).withValues(alpha: 0.75),
+                              color: const Color(
+                                0xFF2D5016,
+                              ).withValues(alpha: 0.75),
                               fontSize: 15,
                               letterSpacing: 1.0,
                               fontWeight: FontWeight.w400,
