@@ -91,6 +91,16 @@ class MainScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: HomeScreen());
+    ref.watch(stepActivityControllerProvider);
+
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: ObBottomBar(
+        currentIndex: _currentIndex,
+        onSelect: (i) {
+          setState(() => _currentIndex = i.clamp(0, 3));
+        },
+      ),
+    );
   }
 }
