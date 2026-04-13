@@ -74,7 +74,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
         onSelect: (i) {
           setState(() => _currentIndex = i.clamp(0, 3));
         },
-        onBreathe: () => context.push('/stress'),
       ),
     );
   }
