@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/ui/ob_background.dart';
 import '../../../core/ui/ob_glass.dart';
 
@@ -26,15 +27,29 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _login() async {
     setState(() => _loading = true);
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
+      final auth = FirebaseBootstrap.authOrNull;
+      if (auth == null) {
+        throw StateError('Firebase is not configured.');
+      }
+      await auth.signInWithEmailAndPassword(
         email: _email.text.trim(),
         password: _password.text,
       );
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login failed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
+    } on StateError catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Login failed')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -43,19 +58,37 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _signup() async {
     setState(() => _loading = true);
     try {
-      await Supabase.instance.client.auth.signUp(
+      final auth = FirebaseBootstrap.authOrNull;
+      if (auth == null) {
+        throw StateError('Firebase is not configured.');
+      }
+      await auth.createUserWithEmailAndPassword(
         email: _email.text.trim(),
         password: _password.text,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signup complete. Check email if required.')),
+        const SnackBar(
+          content: Text(
+            'Account created. Check email if verification is enabled.',
+          ),
+        ),
       );
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signup failed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Signup failed')));
+    } on StateError catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Signup failed')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -64,7 +97,9 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _logout() async {
     setState(() => _loading = true);
     try {
-      await Supabase.instance.client.auth.signOut();
+      final auth = FirebaseBootstrap.authOrNull;
+      if (auth == null) return;
+      await auth.signOut();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -73,7 +108,8 @@ class _AccountScreenState extends State<AccountScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final session = Supabase.instance.client.auth.currentSession;
+    final auth = FirebaseBootstrap.authOrNull;
+    final user = auth?.currentUser;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -83,12 +119,15 @@ class _AccountScreenState extends State<AccountScreen> {
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: ObGlass(
-              child: session == null
+              child: user == null
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('Sign in to sync', style: theme.textTheme.titleLarge),
+                        Text(
+                          'Sign in to sync',
+                          style: theme.textTheme.titleLarge,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           'Your health logs stay on-device unless you sign in.',
@@ -98,9 +137,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         TextField(
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                          ),
+                          decoration: const InputDecoration(labelText: 'Email'),
                         ),
                         const SizedBox(height: 12),
                         TextField(
@@ -119,6 +156,13 @@ class _AccountScreenState extends State<AccountScreen> {
                           onPressed: _loading ? null : _signup,
                           child: const Text('Create account'),
                         ),
+                        if (auth == null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Firebase is not configured yet.',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
                       ],
                     )
                   : Column(
@@ -128,7 +172,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         Text('Signed in', style: theme.textTheme.titleLarge),
                         const SizedBox(height: 8),
                         Text(
-                          session.user.email ?? session.user.id,
+                          user.email ?? user.uid,
                           style: theme.textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 16),
@@ -145,4 +189,3 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 }
-

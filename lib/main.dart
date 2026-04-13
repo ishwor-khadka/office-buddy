@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
-import 'core/supabase/supabase_bootstrap.dart';
+import 'core/firebase/firebase_bootstrap.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/breaks/break_background.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SupabaseBootstrap.initialize();
+  await FirebaseBootstrap.initialize();
   await NotificationService.initialize(
     onTapNotification: (payload) {
       if (payload == null || payload.isEmpty) return;
@@ -17,11 +17,7 @@ Future<void> main() async {
   );
   await BreakBackground.initialize();
   await BreakBackground.registerPeriodicTick();
-  runApp(
-    const ProviderScope(
-      child: OfficeHealthApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: OfficeHealthApp()));
 }
 
 class OfficeHealthApp extends ConsumerWidget {
