@@ -810,6 +810,7 @@ class _DailyActivityCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const TextSpan(text: '👋'),
                   ],
                 ),
               ),
