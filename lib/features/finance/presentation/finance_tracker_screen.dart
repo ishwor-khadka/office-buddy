@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:office_buddy/core/router/app_routes.dart';
 
 import '../../../core/ui/ob_background.dart';
 
@@ -25,11 +26,11 @@ class FinanceTrackerScreen extends StatelessWidget {
               onClose: () => Navigator.of(dialogContext).pop(),
               onAddExpense: () {
                 Navigator.of(dialogContext).pop();
-                context.push('/finance/add-expense');
+                context.push(AppRoutes.financeAddExpenseScreen);
               },
               onAddBorrowLend: () {
                 Navigator.of(dialogContext).pop();
-                context.push('/finance/lend-borrow');
+                context.push(AppRoutes.financeLendBorrowScreen);
               },
             ),
           ),
@@ -127,7 +128,7 @@ class FinanceTrackerScreen extends StatelessWidget {
                             child: _PersonTile(
                               person: person,
                               onTap: () => context.push(
-                                '/finance/person',
+                                AppRoutes.financePersonScreen,
                                 extra: FinancePersonDetailsArgs.fromPerson(
                                   name: person.name,
                                   amount: person.amount,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_routes.dart';
 import '../../../core/ui/ob_background.dart';
 import '../../../core/ui/ob_glass.dart';
 import 'history_providers.dart';
@@ -20,7 +21,7 @@ class HistoryScreen extends ConsumerWidget {
         title: const Text('History'),
         actions: [
           IconButton(
-            onPressed: () => context.push('/account'),
+            onPressed: () => context.push(AppRoutes.accountScreen),
             icon: const Icon(Icons.person_outline),
           ),
         ],

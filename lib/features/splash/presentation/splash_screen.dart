@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/router/app_routes.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -83,7 +85,9 @@ class _SplashScreenState extends State<SplashScreen>
     final prefs = await SharedPreferences.getInstance();
     final onboarded = prefs.getBool(_kOnboarded) ?? false;
     if (!mounted) return;
-    context.go(onboarded ? '/home' : '/onboarding');
+    context.go(
+      onboarded ? AppRoutes.homeScreen : AppRoutes.onBoardingScreen,
+    );
   }
 
   @override

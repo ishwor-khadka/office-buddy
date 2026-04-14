@@ -100,9 +100,7 @@ class _BreakScreenState extends State<BreakScreen> {
     );
     await TrackingRepository.trackIfAvailable(
       type: 'break_completed',
-      data: {
-        'steps_completed': stepsCompleted,
-      },
+      data: {'steps_completed': stepsCompleted},
     );
 
     await breakState.setConsecutiveIgnored(0);
@@ -159,7 +157,7 @@ class _BreakScreenState extends State<BreakScreen> {
     final progress = (_currentSteps / _requiredSteps).clamp(0.0, 1.0);
 
     return PopScope(
-      canPop: false,
+      canPop: true,
       child: Scaffold(
         backgroundColor: theme.colorScheme.errorContainer,
         body: SafeArea(
@@ -191,7 +189,9 @@ class _BreakScreenState extends State<BreakScreen> {
                       'Walk ${_requiredSteps} steps to dismiss.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onErrorContainer.withOpacity(0.85),
+                        color: theme.colorScheme.onErrorContainer.withOpacity(
+                          0.85,
+                        ),
                       ),
                     ).animate().fade(delay: 200.ms),
                     if (_stepError != null) ...[
@@ -200,7 +200,9 @@ class _BreakScreenState extends State<BreakScreen> {
                         _stepError!,
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onErrorContainer.withOpacity(0.75),
+                          color: theme.colorScheme.onErrorContainer.withOpacity(
+                            0.75,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -208,7 +210,9 @@ class _BreakScreenState extends State<BreakScreen> {
                         'Tip: step counting may not work on an emulator. Try on a physical device.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onErrorContainer.withOpacity(0.7),
+                          color: theme.colorScheme.onErrorContainer.withOpacity(
+                            0.7,
+                          ),
                         ),
                       ),
                     ],
@@ -240,11 +244,12 @@ class _BreakScreenState extends State<BreakScreen> {
                             Text(
                               ' / ${_requiredSteps} steps',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onErrorContainer.withOpacity(0.75),
+                                color: theme.colorScheme.onErrorContainer
+                                    .withOpacity(0.75),
                               ),
-                            )
+                            ),
                           ],
-                        )
+                        ),
                       ],
                     ).animate().scale(delay: 400.ms, curve: Curves.easeOutBack),
                     const Spacer(),
@@ -252,7 +257,7 @@ class _BreakScreenState extends State<BreakScreen> {
                       children: [
                         Expanded(
                           child: TextButton(
-                          onPressed: _snoozeUsed ? null : _snooze,
+                            onPressed: _snoozeUsed ? null : _snooze,
                             child: Text(
                               _snoozeUsed ? 'Snoozed' : 'Snooze (5m)',
                               style: TextStyle(
@@ -265,14 +270,19 @@ class _BreakScreenState extends State<BreakScreen> {
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.onErrorContainer,
+                              backgroundColor:
+                                  theme.colorScheme.onErrorContainer,
                               foregroundColor: theme.colorScheme.errorContainer,
                             ),
                             onPressed: _stepError == null
                                 ? null
                                 : () {
-                                    setState(() => _currentSteps = _requiredSteps);
-                                    _completeBreak(stepsCompleted: _requiredSteps);
+                                    setState(
+                                      () => _currentSteps = _requiredSteps,
+                                    );
+                                    _completeBreak(
+                                      stepsCompleted: _requiredSteps,
+                                    );
                                   },
                             child: const Text('I walked'),
                           ),

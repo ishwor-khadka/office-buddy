@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../notifications/notification_service.dart';
+import '../router/app_routes.dart';
 import '../settings/settings_repository.dart';
 import 'break_state_repository.dart';
 import '../data/database_helper.dart';
@@ -11,10 +11,7 @@ class BreakBackground {
   static const String periodicTaskName = 'office_buddy_break_tick';
 
   static Future<void> initialize() async {
-    await Workmanager().initialize(
-      callbackDispatcher,
-      isInDebugMode: kDebugMode,
-    );
+    await Workmanager().initialize(callbackDispatcher);
   }
 
   static Future<void> registerPeriodicTick() async {
@@ -100,7 +97,7 @@ class BreakBackground {
         await breakStateRepo.setEscalationLevel(escalationLevel);
       }
 
-      final payload = '/break';
+      final payload = AppRoutes.breakScreen;
       final title = shouldEscalate ? 'Movement needed' : 'Time for a break';
       final body = switch (escalationLevel) {
         1 =>

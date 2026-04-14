@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'exercise_detail_screen.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/exercises/exercise.dart';
 import '../../../core/exercises/exercise_providers.dart';
 import '../../../core/exercises/favorites_providers.dart';
@@ -99,7 +100,7 @@ class ExercisesScreen extends ConsumerWidget {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: quickAccess.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 10),
+                          separatorBuilder: (context, index) => const SizedBox(width: 10),
                           itemBuilder: (context, index) {
                             final ex = quickAccess[index];
                             return SizedBox(
@@ -108,11 +109,9 @@ class ExercisesScreen extends ConsumerWidget {
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(24),
                                   onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            ExerciseDetailScreen(exercise: ex),
-                                      ),
+                                    context.push(
+                                      AppRoutes.exerciseDetailScreen,
+                                      extra: ex,
                                     );
                                   },
                                   child: Row(
@@ -182,10 +181,9 @@ class ExercisesScreen extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
         onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ExerciseDetailScreen(exercise: exercise),
-            ),
+          context.push(
+            AppRoutes.exerciseDetailScreen,
+            extra: exercise,
           );
         },
         child: Row(

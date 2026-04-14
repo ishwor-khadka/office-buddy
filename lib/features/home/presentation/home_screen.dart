@@ -5,10 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/firebase/firebase_bootstrap.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/ui/ob_background.dart';
-import '../../breaks/presentation/break_screen.dart';
-import '../../eyes/presentation/eye_dryness_screen.dart';
-import '../../posture/presentation/posture_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,6 +23,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userName =
+        FirebaseBootstrap.authOrNull?.currentUser?.displayName?.trim();
+
     return Scaffold(
       body: ObBackground(
         child: Stack(
@@ -40,7 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _HomeHeader()
+                    _HomeHeader(userName: userName ?? 'Alex')
                         .animate()
                         .fade(duration: 320.ms)
                         .slideY(begin: -0.08, end: 0),
@@ -95,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 16),
 
                     // Moment Card
-                    _MomentCard(onTap: () => context.push('/stress'))
+                    _MomentCard(onTap: () => context.push(AppRoutes.stressScreen))
                         .animate()
                         .fade(delay: 260.ms, duration: 320.ms)
                         .slideY(begin: 0.08, end: 0),
@@ -119,13 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                     shadowColor: const Color(0xFF3A6FF7),
                                     height: 224,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => const PostureScreen(),
-                                        ),
-                                      );
-                                    },
+                                    onTap: () => context.push(AppRoutes.postureScreen),
                                   ),
                                   const SizedBox(height: 16),
                                   _FeatureCard(
@@ -138,13 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                     shadowColor: const Color(0xFF10B981),
                                     height: 176,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => const BreakScreen(),
-                                        ),
-                                      );
-                                    },
+                                    onTap: () => context.push(AppRoutes.breakScreen),
                                   ),
                                 ],
                               ),
@@ -163,27 +153,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                     shadowColor: const Color(0xFF8B5CF6),
                                     height: 176,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) =>
-                                              const EyeDrynessScreen(),
-                                        ),
-                                      );
-                                    },
+                                    onTap: () => context.push(AppRoutes.eyesScreen),
                                   ),
                                   const SizedBox(height: 16),
-                                  const _FeatureCard(
+                                  _FeatureCard(
+                                    onTap: () => context.push(AppRoutes.financeScreen),
                                     title: 'Finance\nTracker',
                                     subtitle: 'Review expenses',
                                     icon: LucideIcons.wallet,
-                                    gradient: [
+                                    gradient: const [
                                       Color(0xFFFF6B8A),
                                       Color(0xFFFF3D6E),
                                     ],
-                                    shadowColor: Color(0xFFFF3D6E),
+                                    shadowColor: const Color(0xFFFF3D6E),
                                     height: 224,
-                                    enabled: false,
                                   ),
                                 ],
                               ),
@@ -205,7 +188,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader();
+  const _HomeHeader({required this.userName});
+
+  final String userName;
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +253,7 @@ class _HomeHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hi, Alex ',
+                'Hi, $userName ',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF101828),
@@ -955,7 +940,6 @@ class _FeatureCard extends StatelessWidget {
     required this.shadowColor,
     required this.height,
     this.onTap,
-    this.enabled = true,
   });
 
   final String title;
@@ -965,7 +949,6 @@ class _FeatureCard extends StatelessWidget {
   final Color shadowColor;
   final double height;
   final VoidCallback? onTap;
-  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -975,7 +958,7 @@ class _FeatureCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: enabled ? onTap : null,
+          onTap: onTap,
           borderRadius: BorderRadius.circular(28),
           child: Ink(
             padding: const EdgeInsets.all(20),
@@ -992,7 +975,7 @@ class _FeatureCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: shadowColor.withValues(alpha: enabled ? 0.25 : 0.15),
+                  color: shadowColor.withValues(alpha: 0.25),
                   blurRadius: 25,
                   offset: const Offset(0, 12),
                 ),
@@ -1043,28 +1026,7 @@ class _FeatureCard extends StatelessWidget {
                       ),
                       child: Icon(icon, color: Colors.white, size: 24),
                     ),
-                    if (!enabled) ...[
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Soon',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                    ] else
-                      const Spacer(),
+                    const Spacer(),
                     Text(
                       title,
                       style: theme.textTheme.titleLarge?.copyWith(

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/settings/settings_providers.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/settings/user_settings.dart';
 import '../../../core/ui/ob_background.dart';
 import '../../../core/ui/ob_glass.dart';
@@ -82,7 +83,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await prefs.setBool(_kOnboarded, true);
 
     if (!mounted) return;
-    context.go('/home');
+    context.go(AppRoutes.homeScreen);
   }
 
   @override
@@ -144,7 +145,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       Text('Break interval', style: theme.textTheme.titleLarge),
                       const SizedBox(height: 8),
                       Text(
-                        '${_breakIntervalMinutes} minutes',
+                        '$_breakIntervalMinutes minutes',
                         style: theme.textTheme.bodyLarge,
                       ),
                       Slider(
@@ -167,7 +168,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       Text('Steps to dismiss', style: theme.textTheme.titleLarge),
                       const SizedBox(height: 8),
                       Text(
-                        '${_requiredSteps} steps',
+                        '$_requiredSteps steps',
                         style: theme.textTheme.bodyLarge,
                       ),
                       Slider(

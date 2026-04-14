@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/ui/ob_background.dart';
 
 class GoogleLoginScreen extends StatefulWidget {
@@ -40,7 +41,11 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
     if (auth?.currentUser == null || !mounted) return;
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    context.go(prefs.getBool(_kOnboarded) ?? false ? '/home' : '/onboarding');
+    context.go(
+      prefs.getBool(_kOnboarded) ?? false
+          ? AppRoutes.homeScreen
+          : AppRoutes.onBoardingScreen,
+    );
   }
 
   Future<void> _signInWithGoogle() async {
@@ -69,7 +74,11 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
 
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
-      context.go(prefs.getBool(_kOnboarded) ?? false ? '/home' : '/onboarding');
+      context.go(
+        prefs.getBool(_kOnboarded) ?? false
+            ? AppRoutes.homeScreen
+            : AppRoutes.onBoardingScreen,
+      );
     } on GoogleSignInException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
