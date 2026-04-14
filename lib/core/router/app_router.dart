@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/breaks/step_activity_controller.dart';
 import '../../core/ui/ob_bottom_bar.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/auth/presentation/google_login_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/stress_relief/presentation/stress_relief_screen.dart';
 import '../../features/breaks/presentation/break_screen.dart';
@@ -25,7 +26,8 @@ final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+    GoRoute(path: '/', builder: (context, state) => const GoogleLoginScreen()),
+    GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(path: '/home', builder: (context, state) => const MainScaffold()),
     GoRoute(
       path: '/onboarding',

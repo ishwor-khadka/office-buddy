@@ -48,6 +48,7 @@ dependencies:
   google_fonts: ^8.0.2
   lucide_icons: ^0.257.0
   path: ^1.9.1
+  google_sign_in: ^7.2.0
   google_mlkit_face_detection: ^0.13.2
   audioplayers: ^6.1.0
   firebase_core: ^4.7.0

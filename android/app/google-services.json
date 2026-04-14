@@ -12,7 +12,20 @@
           "package_name": "com.agnepal.office_health_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "261131547010-h9f22meeuqu70ilahsku72dhr19vnj3p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.agnepal.office_health_app",
+            "certificate_hash": "3ee052d8a7d943ae42eaa7cfaf605c66ec1bbc5a"
+          }
+        },
+        {
+          "client_id": "261131547010-00grjmhfe1fbl3f9jvlmnugrs7hade4j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBvvvmfERTdDGQATyE5BAB6WTy7oFk8Xs0"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "261131547010-00grjmhfe1fbl3f9jvlmnugrs7hade4j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "261131547010-7chf3dssq60qbgkfrn6ii55se17da7iq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.agnepal.officeHealthApp"
+              }
+            }
+          ]
         }
       }
     }
