@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/breaks/step_activity_controller.dart';
+import '../../core/ui/ob_bottom_bar.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/stress_relief/presentation/stress_relief_screen.dart';
 import '../../features/breaks/presentation/break_screen.dart';
 import '../../features/posture/presentation/posture_screen.dart';
 import '../../features/eyes/presentation/eye_dryness_screen.dart';
+import '../../features/history/presentation/history_screen.dart';
+import '../../features/sleep/presentation/sleep_screen.dart';
+import '../../features/exercises/presentation/exercises_screen.dart';
 import '../../features/finance/presentation/finance_tracker_screen.dart';
 import '../../features/finance/presentation/finance_person_details_screen.dart';
 import '../../features/finance/presentation/add_expense_screen.dart';
@@ -86,8 +92,22 @@ final appRouter = GoRouter(
   ],
 );
 
-class MainScaffold extends StatelessWidget {
+class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
+
+  @override
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
+}
+
+class _MainScaffoldState extends ConsumerState<MainScaffold> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    HistoryScreen(),
+    SleepScreen(),
+    ExercisesScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {

@@ -49,8 +49,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Daily Motivation Card
                     if (_showMotivation)
                       _MotivationCard(
-                        onDismiss: () => setState(() => _showMotivation = false),
-                      )
+                            onDismiss: () =>
+                                setState(() => _showMotivation = false),
+                          )
                           .animate()
                           .fade(delay: 80.ms, duration: 320.ms)
                           .slideY(begin: 0.08, end: 0),
@@ -60,21 +61,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Mood Selector Card
                     if (_showMoodSelector)
                       _MoodSelectorCard(
-                        selectedMood: _selectedMood,
-                        onMoodSelected: (mood) {
-                          HapticFeedback.lightImpact();
-                          setState(() {
-                            _selectedMood = mood;
-                          });
-                          // Auto-dismiss after selection with a short delay
-                          Future.delayed(const Duration(milliseconds: 400), () {
-                            if (mounted) {
-                              setState(() => _showMoodSelector = false);
-                            }
-                          });
-                        },
-                        onDismiss: () => setState(() => _showMoodSelector = false),
-                      )
+                            selectedMood: _selectedMood,
+                            onMoodSelected: (mood) {
+                              HapticFeedback.lightImpact();
+                              setState(() {
+                                _selectedMood = mood;
+                              });
+                              // Auto-dismiss after selection with a short delay
+                              Future.delayed(
+                                const Duration(milliseconds: 400),
+                                () {
+                                  if (mounted) {
+                                    setState(() => _showMoodSelector = false);
+                                  }
+                                },
+                              );
+                            },
+                            onDismiss: () =>
+                                setState(() => _showMoodSelector = false),
+                          )
                           .animate()
                           .fade(delay: 140.ms, duration: 320.ms)
                           .slideY(begin: 0.08, end: 0),
@@ -90,9 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 16),
 
                     // Moment Card
-                    _MomentCard(
-                      onTap: () => context.push('/stress'),
-                    )
+                    _MomentCard(onTap: () => context.push('/stress'))
                         .animate()
                         .fade(delay: 260.ms, duration: 320.ms)
                         .slideY(begin: 0.08, end: 0),
@@ -101,91 +104,92 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // Feature Cards Grid
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            children: [
-                              _FeatureCard(
-                                title: 'Check\nPosture',
-                                subtitle: 'Verify sitting\nposition',
-                                icon: LucideIcons.scanFace,
-                                gradient: const [
-                                  Color(0xFF5B8CFF),
-                                  Color(0xFF3A6FF7),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _FeatureCard(
+                                    title: 'Check\nPosture',
+                                    subtitle: 'Verify sitting\nposition',
+                                    icon: LucideIcons.scanFace,
+                                    gradient: const [
+                                      Color(0xFF5B8CFF),
+                                      Color(0xFF3A6FF7),
+                                    ],
+                                    shadowColor: const Color(0xFF3A6FF7),
+                                    height: 224,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => const PostureScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _FeatureCard(
+                                    title: 'Movement',
+                                    subtitle: 'Stretch & walk',
+                                    icon: LucideIcons.footprints,
+                                    gradient: const [
+                                      Color(0xFF34D399),
+                                      Color(0xFF10B981),
+                                    ],
+                                    shadowColor: const Color(0xFF10B981),
+                                    height: 176,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => const BreakScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ],
-                                shadowColor: const Color(0xFF3A6FF7),
-                                height: 224,
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => const PostureScreen(),
-                                    ),
-                                  );
-                                },
                               ),
-                              const SizedBox(height: 16),
-                              _FeatureCard(
-                                title: 'Movement',
-                                subtitle: 'Stretch & walk',
-                                icon: LucideIcons.footprints,
-                                gradient: const [
-                                  Color(0xFF34D399),
-                                  Color(0xFF10B981),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _FeatureCard(
+                                    title: 'Eye Check',
+                                    subtitle: 'Blink and rest',
+                                    icon: LucideIcons.eye,
+                                    gradient: const [
+                                      Color(0xFFA78BFA),
+                                      Color(0xFF8B5CF6),
+                                    ],
+                                    shadowColor: const Color(0xFF8B5CF6),
+                                    height: 176,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) =>
+                                              const EyeDrynessScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const _FeatureCard(
+                                    title: 'Finance\nTracker',
+                                    subtitle: 'Review expenses',
+                                    icon: LucideIcons.wallet,
+                                    gradient: [
+                                      Color(0xFFFF6B8A),
+                                      Color(0xFFFF3D6E),
+                                    ],
+                                    shadowColor: Color(0xFFFF3D6E),
+                                    height: 224,
+                                    enabled: false,
+                                  ),
                                 ],
-                                shadowColor: const Color(0xFF10B981),
-                                height: 176,
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => const BreakScreen(),
-                                    ),
-                                  );
-                                },
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              _FeatureCard(
-                                title: 'Eye Check',
-                                subtitle: 'Blink and rest',
-                                icon: LucideIcons.eye,
-                                gradient: const [
-                                  Color(0xFFA78BFA),
-                                  Color(0xFF8B5CF6),
-                                ],
-                                shadowColor: const Color(0xFF8B5CF6),
-                                height: 176,
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => const EyeDrynessScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              const _FeatureCard(
-                                title: 'Finance\nTracker',
-                                subtitle: 'Review expenses',
-                                icon: LucideIcons.wallet,
-                                gradient: [
-                                  Color(0xFFFF6B8A),
-                                  Color(0xFFFF3D6E),
-                                ],
-                                shadowColor: Color(0xFFFF3D6E),
-                                height: 224,
-                                enabled: false,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
+                            ),
+                          ],
+                        )
                         .animate()
                         .fade(delay: 320.ms, duration: 360.ms)
                         .slideY(begin: 0.1, end: 0),
@@ -617,7 +621,9 @@ class _MoodSelectorCard extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: isSelected ? 0.1 : 0.05),
+                              color: Colors.black.withValues(
+                                alpha: isSelected ? 0.1 : 0.05,
+                              ),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -810,7 +816,7 @@ class _DailyActivityCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const TextSpan(text: '👋'),
+                    const Text('👋'),
                   ],
                 ),
               ),
@@ -848,35 +854,35 @@ class _MomentCard extends StatelessWidget {
         children: [
           // Animated icon
           SizedBox(
-            width: 48,
-            height: 48,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5B8CFF).withValues(alpha: 0.4),
-                    shape: BoxShape.circle,
-                  ),
+                width: 48,
+                height: 48,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5B8CFF).withValues(alpha: 0.4),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFA78BFA).withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.air_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ],
                 ),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFA78BFA).withValues(alpha: 0.6),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const Icon(
-                  Icons.air_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ],
-            ),
-          )
+              )
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .scale(
                 begin: const Offset(1, 1),
@@ -1035,11 +1041,7 @@ class _FeatureCard extends StatelessWidget {
                           width: 1.5,
                         ),
                       ),
-                      child: Icon(
-                        icon,
-                        color: Colors.white,
-                        size: 24,
-                      ),
+                      child: Icon(icon, color: Colors.white, size: 24),
                     ),
                     if (!enabled) ...[
                       const Spacer(),
@@ -1121,11 +1123,7 @@ class _AmbientGlow extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: [
-              BoxShadow(
-                color: color,
-                blurRadius: 120,
-                spreadRadius: 48,
-              ),
+              BoxShadow(color: color, blurRadius: 120, spreadRadius: 48),
             ],
           ),
         ),
