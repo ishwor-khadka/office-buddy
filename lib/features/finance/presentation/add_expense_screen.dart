@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/finance/finance_repository.dart';
+import '../../../core/settings/currency_preference.dart';
+import '../../../core/settings/currency_preference_repository.dart';
 import '../../../core/ui/ob_background.dart';
 
 class AddExpenseScreen extends StatefulWidget {
@@ -10,9 +13,20 @@ class AddExpenseScreen extends StatefulWidget {
 }
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
+  final FinanceRepository _repository = FinanceRepository();
+  final CurrencyPreferenceRepository _currencyRepository =
+      CurrencyPreferenceRepository();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   ExpenseCategory? _selectedCategory;
+  bool _saving = false;
+  Future<CurrencyPreference>? _currencyFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _currencyFuture = _currencyRepository.load();
+  }
 
   @override
   void dispose() {
@@ -23,228 +37,275 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final amountFilled = _amountController.text.trim().isNotEmpty;
-    final categorySelected = _selectedCategory != null;
-    final canSave = amountFilled && categorySelected;
-    final showDescription = _selectedCategory == ExpenseCategory.other;
+    return FutureBuilder<CurrencyPreference>(
+      future: _currencyFuture,
+      builder: (context, snapshot) {
+        final currency = snapshot.data ?? CurrencyPreference.defaultPreference;
+        final navigator = Navigator.of(context);
+        final theme = Theme.of(context);
+        final amountFilled = _amountController.text.trim().isNotEmpty;
+        final categorySelected = _selectedCategory != null;
+        final canSave = amountFilled && categorySelected && !_saving;
+        final showDescription = _selectedCategory == ExpenseCategory.other;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F1F1),
-      body: ObBackground(
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFEAF5FF),
-                        Color(0xFFF0E9FF),
-                        Color(0xFFEAF5F1),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.10),
-                        blurRadius: 26,
-                        offset: const Offset(0, 14),
+        return Scaffold(
+          backgroundColor: const Color(0xFFF1F1F1),
+          body: ObBackground(
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 430),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFFEAF5FF),
+                            Color(0xFFF0E9FF),
+                            Color(0xFFEAF5F1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.10),
+                            blurRadius: 26,
+                            offset: const Offset(0, 14),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(
-                                Icons.arrow_back,
-                                color: Color(0xFF374151),
-                                size: 28,
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  icon: const Icon(
+                                    Icons.arrow_back,
+                                    color: Color(0xFF374151),
+                                    size: 28,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    'Add Expense',
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      color: const Color(0xFF111827),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+                            Container(
+                              padding: const EdgeInsets.fromLTRB(
+                                18,
+                                18,
+                                18,
+                                16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Amount',
+                                    style: theme.textTheme.labelLarge?.copyWith(
+                                      color: const Color(0xFF7A8190),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextField(
+                                    controller: _amountController,
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (_) => setState(() {}),
+                                    style: theme.textTheme.displaySmall
+                                        ?.copyWith(
+                                          color: const Color(0xFF8B8B8B),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                    decoration: InputDecoration(
+                                      prefixText: '${currency.symbol} ',
+                                      prefixStyle: const TextStyle(
+                                        color: Color(0xFF8B8B8B),
+                                        fontSize: 34,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      hintText: '0',
+                                      hintStyle: const TextStyle(
+                                        color: Color(0xFF8B8B8B),
+                                        fontSize: 34,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      border: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                'Add Expense',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  color: const Color(0xFF111827),
-                                  fontWeight: FontWeight.w600,
+                            const SizedBox(height: 22),
+                            Text(
+                              'Select Category',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: const Color(0xFF111827),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            GridView.count(
+                              crossAxisCount: 4,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.75,
+                              children: ExpenseCategory.values
+                                  .map(
+                                    (category) => _CategoryTile(
+                                      category: category,
+                                      selected: _selectedCategory == category,
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedCategory = category;
+                                        });
+                                      },
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            if (showDescription) ...[
+                              const SizedBox(height: 18),
+                              Container(
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  18,
+                                  18,
+                                  14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(22),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.06,
+                                      ),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Description',
+                                      style: theme.textTheme.labelLarge
+                                          ?.copyWith(
+                                            color: const Color(0xFF7A8190),
+                                          ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    TextField(
+                                      controller: _descriptionController,
+                                      maxLines: 2,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Add a short note',
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 22),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: canSave
+                                    ? () async {
+                                        setState(() => _saving = true);
+                                        try {
+                                          await _repository.addExpense(
+                                            amount: _amountController.text
+                                                .trim(),
+                                            category: _selectedCategory!.label,
+                                            description: _descriptionController
+                                                .text
+                                                .trim(),
+                                          );
+                                          if (!mounted) return;
+                                          navigator.pop(true);
+                                        } finally {
+                                          if (mounted) {
+                                            setState(() => _saving = false);
+                                          }
+                                        }
+                                      }
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF59B4E9),
+                                  disabledBackgroundColor: const Color(
+                                    0xFFE2E5EB,
+                                  ),
+                                  foregroundColor: Colors.white,
+                                  disabledForegroundColor: const Color(
+                                    0xFF9BA4B5,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 18,
+                                  ),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Save Expense',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: canSave
+                                        ? Colors.white
+                                        : const Color(0xFF9BA4B5),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 18,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Amount',
-                                style: theme.textTheme.labelLarge?.copyWith(
-                                  color: const Color(0xFF7A8190),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              TextField(
-                                controller: _amountController,
-                                keyboardType: TextInputType.number,
-                                onChanged: (_) => setState(() {}),
-                                style: theme.textTheme.displaySmall?.copyWith(
-                                  color: const Color(0xFF8B8B8B),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                decoration: const InputDecoration(
-                                  prefixText: '₹ ',
-                                  prefixStyle: TextStyle(
-                                    color: Color(0xFF8B8B8B),
-                                    fontSize: 34,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                  hintText: '0',
-                                  hintStyle: TextStyle(
-                                    color: Color(0xFF8B8B8B),
-                                    fontSize: 34,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        Text(
-                          'Select Category',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: const Color(0xFF111827),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        GridView.count(
-                          crossAxisCount: 4,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          childAspectRatio: 0.75,
-                          children: ExpenseCategory.values
-                              .map(
-                                (category) => _CategoryTile(
-                                  category: category,
-                                  selected: _selectedCategory == category,
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedCategory = category;
-                                    });
-                                  },
-                                ),
-                              )
-                              .toList(),
-                        ),
-                        if (showDescription) ...[
-                          const SizedBox(height: 18),
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(22),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.06),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Description',
-                                  style: theme.textTheme.labelLarge?.copyWith(
-                                    color: const Color(0xFF7A8190),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                TextField(
-                                  controller: _descriptionController,
-                                  maxLines: 2,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Add a short note',
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 22),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: canSave ? () {} : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF59B4E9),
-                              disabledBackgroundColor: const Color(0xFFE2E5EB),
-                              foregroundColor: Colors.white,
-                              disabledForegroundColor: const Color(0xFF9BA4B5),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                            child: Text(
-                              'Save Expense',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: canSave
-                                    ? Colors.white
-                                    : const Color(0xFF9BA4B5),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -344,4 +405,17 @@ class _CategoryTile extends StatelessWidget {
       ),
     );
   }
+}
+
+extension on ExpenseCategory {
+  String get label => switch (this) {
+    ExpenseCategory.food => 'Food',
+    ExpenseCategory.transport => 'Transport',
+    ExpenseCategory.shopping => 'Shopping',
+    ExpenseCategory.entertainment => 'Entertainment',
+    ExpenseCategory.bills => 'Bills',
+    ExpenseCategory.health => 'Health',
+    ExpenseCategory.education => 'Education',
+    ExpenseCategory.other => 'Other',
+  };
 }

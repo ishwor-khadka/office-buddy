@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/settings/settings_providers.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/settings/user_settings.dart';
+import '../../../core/settings/office_schedule.dart';
+import '../../../core/settings/office_schedule_repository.dart';
 import '../../../core/ui/ob_background.dart';
 import '../../../core/ui/ob_glass.dart';
 import '../../../core/ui/ob_tokens.dart';
 
-class OnboardingScreen extends ConsumerStatefulWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _kOnboarded = 'onboarded_v1';
+  final OfficeScheduleRepository _repository = OfficeScheduleRepository();
 
   int _workStartMinutes = 9 * 60;
   int _workEndMinutes = 18 * 60;
-  int _breakIntervalMinutes = 45;
-  int _requiredSteps = 25;
+  final Set<int> _offDays = <int>{DateTime.saturday, DateTime.sunday};
+  bool _saving = false;
 
   @override
   void initState() {
@@ -32,13 +32,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _loadExisting() async {
-    final settings = await ref.read(userSettingsProvider.future);
+    final schedule = await _repository.load();
     if (!mounted) return;
     setState(() {
-      _workStartMinutes = settings.workStartMinutes;
-      _workEndMinutes = settings.workEndMinutes;
-      _breakIntervalMinutes = settings.breakIntervalMinutes;
-      _requiredSteps = settings.requiredSteps;
+      _workStartMinutes = schedule.workStartMinutes;
+      _workEndMinutes = schedule.workEndMinutes;
+      _offDays
+        ..clear()
+        ..addAll(schedule.offDays);
     });
   }
 
@@ -70,20 +71,45 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
   }
 
+  void _toggleOffDay(int weekday) {
+    setState(() {
+      if (!_offDays.add(weekday)) {
+        _offDays.remove(weekday);
+      }
+    });
+  }
+
   Future<void> _finish() async {
-    final settings = UserSettings(
-      workStartMinutes: _workStartMinutes,
-      workEndMinutes: _workEndMinutes,
-      breakIntervalMinutes: _breakIntervalMinutes,
-      requiredSteps: _requiredSteps,
-    );
-    await ref.read(userSettingsProvider.notifier).save(settings);
+    setState(() => _saving = true);
+    try {
+      final synced = await _repository.save(
+        OfficeSchedule(
+          workStartMinutes: _workStartMinutes,
+          workEndMinutes: _workEndMinutes,
+          offDays: _offDays.toList()..sort(),
+        ),
+      );
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kOnboarded, true);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kOnboarded, true);
 
-    if (!mounted) return;
-    context.go(AppRoutes.homeScreen);
+      if (!synced && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Saved locally. Cloud sync will retry later.'),
+          ),
+        );
+      }
+      if (!mounted) return;
+      context.go(AppRoutes.homeScreen);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save office timing: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -97,19 +123,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 8),
-                Text(
-                  'Welcome to Office Buddy',
-                  style: theme.textTheme.displayLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Set your work hours and break rhythm. You can change this later.',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 16),
-                ObGlass(
+                  children: [
+                    const SizedBox(height: 8),
+                    Text(
+                      'Welcome to Office Buddy',
+                      style: theme.textTheme.displayLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Set your office start time, end time, and off days. You can change this later.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    ObGlass(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -135,75 +161,85 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         ],
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ObGlass(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Break interval', style: theme.textTheme.titleLarge),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$_breakIntervalMinutes minutes',
-                        style: theme.textTheme.bodyLarge,
                       ),
-                      Slider(
-                        min: 20,
-                        max: 90,
-                        divisions: 14,
-                        value: _breakIntervalMinutes.toDouble(),
-                        onChanged: (v) => setState(() {
-                          _breakIntervalMinutes = v.round();
-                        }),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ObGlass(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Steps to dismiss', style: theme.textTheme.titleLarge),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$_requiredSteps steps',
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                      Slider(
-                        min: 20,
-                        max: 30,
-                        divisions: 10,
-                        value: _requiredSteps.toDouble(),
-                        onChanged: (v) => setState(() {
-                          _requiredSteps = v.round();
-                        }),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                ElevatedButton(
-                  onPressed: _finish,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ObTokens.mint,
-                    foregroundColor: ObTokens.text,
-                    minimumSize: const Size.fromHeight(54),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
                     ),
-                  ),
-                  child: const Text('Continue'),
+                    const SizedBox(height: 14),
+                    ObGlass(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Off days', style: theme.textTheme.titleLarge),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Select the days you do not work.',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: _weekdayLabels.entries.map((entry) {
+                              final isSelected = _offDays.contains(entry.key);
+                              return FilterChip(
+                                label: Text(entry.value),
+                                selected: isSelected,
+                                onSelected: (_) => _toggleOffDay(entry.key),
+                                showCheckmark: false,
+                                selectedColor: ObTokens.mint.withValues(
+                                  alpha: 0.34,
+                                ),
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.32,
+                                ),
+                                labelStyle: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight:
+                                      isSelected ? FontWeight.w700 : FontWeight.w500,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? ObTokens.mint
+                                        : Colors.white.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    ElevatedButton(
+                      onPressed: _saving ? null : _finish,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ObTokens.mint,
+                        foregroundColor: ObTokens.text,
+                        minimumSize: const Size.fromHeight(54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: Text(_saving ? 'Saving...' : 'Continue'),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
       ),
     );
   }
 }
+
+const Map<int, String> _weekdayLabels = <int, String>{
+  DateTime.monday: 'Mon',
+  DateTime.tuesday: 'Tue',
+  DateTime.wednesday: 'Wed',
+  DateTime.thursday: 'Thu',
+  DateTime.friday: 'Fri',
+  DateTime.saturday: 'Sat',
+  DateTime.sunday: 'Sun',
+};
 
 class _TimePill extends StatelessWidget {
   const _TimePill({

@@ -37,19 +37,23 @@ GoRouter _createAppRouter() {
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation:
-        auth.currentUser == null ? AppRoutes.loginScreen : AppRoutes.homeScreen,
+    initialLocation: AppRoutes.splashScreen,
     refreshListenable: _GoRouterRefreshStream(auth.authStateChanges()),
     redirect: (context, state) {
       final user = auth.currentUser;
       final isLoggedIn = user != null;
       final goingToLogin = state.matchedLocation == AppRoutes.loginScreen;
+      final goingToSplash = state.matchedLocation == AppRoutes.splashScreen;
+
+      if (goingToSplash) {
+        return null;
+      }
 
       if (!isLoggedIn) {
         return goingToLogin ? null : AppRoutes.loginScreen;
       }
 
-      if (goingToLogin || state.matchedLocation == AppRoutes.splashScreen) {
+      if (goingToLogin) {
         return AppRoutes.homeScreen;
       }
 
@@ -117,7 +121,7 @@ GoRouter _createAppRouter() {
                 args ??
                 const FinancePersonDetailsArgs(
                   name: 'Rajesh',
-                  amount: '₹500',
+                  amount: '500',
                   isOwed: true,
                   color: Color(0xFF5EB7F6),
                   initials: '👱',
@@ -125,12 +129,12 @@ GoRouter _createAppRouter() {
                     FinanceTransaction(
                       title: 'Dinner at restaurant',
                       dateLabel: 'Apr 5, 2026',
-                      amount: '₹300',
+                      amount: '300',
                     ),
                     FinanceTransaction(
                       title: 'Movie tickets',
                       dateLabel: 'Apr 3, 2026',
-                      amount: '₹200',
+                      amount: '200',
                     ),
                   ],
                 ),

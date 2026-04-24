@@ -2,10 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/router/app_routes.dart';
+import '../../../core/settings/office_schedule_repository.dart';
 import '../../../core/ui/ob_background.dart';
 
 class GoogleLoginScreen extends StatefulWidget {
@@ -16,9 +16,10 @@ class GoogleLoginScreen extends StatefulWidget {
 }
 
 class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
-  static const _kOnboarded = 'onboarded_v1';
   static const _kServerClientId =
       '261131547010-00grjmhfe1fbl3f9jvlmnugrs7hade4j.apps.googleusercontent.com';
+  final OfficeScheduleRepository _officeScheduleRepository =
+      OfficeScheduleRepository();
 
   bool _loading = false;
   late final Future<void> _googleSignInInit;
@@ -31,20 +32,16 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
   }
 
   Future<void> _initializeGoogleSignIn() async {
-    await GoogleSignIn.instance.initialize(
-      serverClientId: _kServerClientId,
-    );
+    await GoogleSignIn.instance.initialize(serverClientId: _kServerClientId);
   }
 
   Future<void> _skipIfSignedIn() async {
     final auth = FirebaseBootstrap.authOrNull;
     if (auth?.currentUser == null || !mounted) return;
-    final prefs = await SharedPreferences.getInstance();
+    final hasSavedSchedule = await _officeScheduleRepository.hasSavedSchedule();
     if (!mounted) return;
     context.go(
-      prefs.getBool(_kOnboarded) ?? false
-          ? AppRoutes.homeScreen
-          : AppRoutes.onBoardingScreen,
+      hasSavedSchedule ? AppRoutes.homeScreen : AppRoutes.onBoardingScreen,
     );
   }
 
@@ -72,12 +69,12 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
       final credential = GoogleAuthProvider.credential(idToken: idToken);
       await auth.signInWithCredential(credential);
 
-      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      final hasSavedSchedule = await _officeScheduleRepository
+          .hasSavedSchedule();
       if (!mounted) return;
       context.go(
-        prefs.getBool(_kOnboarded) ?? false
-            ? AppRoutes.homeScreen
-            : AppRoutes.onBoardingScreen,
+        hasSavedSchedule ? AppRoutes.homeScreen : AppRoutes.onBoardingScreen,
       );
     } on GoogleSignInException catch (e) {
       if (!mounted) return;

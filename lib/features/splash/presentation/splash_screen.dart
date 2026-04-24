@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/router/app_routes.dart';
+import '../../../core/settings/office_schedule_repository.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,7 +16,8 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  static const _kOnboarded = 'onboarded_v1';
+  final OfficeScheduleRepository _officeScheduleRepository =
+      OfficeScheduleRepository();
 
   late AnimationController _controller;
   late Animation<double> _mintFillAnim;
@@ -82,11 +84,17 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _routeNext() async {
-    final prefs = await SharedPreferences.getInstance();
-    final onboarded = prefs.getBool(_kOnboarded) ?? false;
+    final auth = FirebaseBootstrap.authOrNull;
+    if (auth?.currentUser == null) {
+      if (!mounted) return;
+      context.go(AppRoutes.loginScreen);
+      return;
+    }
+
+    final hasSavedSchedule = await _officeScheduleRepository.hasSavedSchedule();
     if (!mounted) return;
     context.go(
-      onboarded ? AppRoutes.homeScreen : AppRoutes.onBoardingScreen,
+      hasSavedSchedule ? AppRoutes.homeScreen : AppRoutes.onBoardingScreen,
     );
   }
 

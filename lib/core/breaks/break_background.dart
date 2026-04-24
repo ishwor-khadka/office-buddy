@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
+import '../firebase/firebase_bootstrap.dart';
 import '../notifications/notification_service.dart';
 import '../router/app_routes.dart';
+import '../settings/office_schedule_repository.dart';
 import '../settings/settings_repository.dart';
 import 'break_state_repository.dart';
 import '../data/database_helper.dart';
@@ -28,20 +30,24 @@ class BreakBackground {
   static void callbackDispatcher() {
     Workmanager().executeTask((task, inputData) async {
       WidgetsFlutterBinding.ensureInitialized();
+      await FirebaseBootstrap.initialize();
 
       // Initialize notifications in background isolate so we can show reminders.
       await NotificationService.initialize(onTapNotification: (_) {});
 
+      final officeScheduleRepo = OfficeScheduleRepository();
       final settingsRepo = SettingsRepository();
       final breakStateRepo = BreakStateRepository();
+      final officeSchedule = await officeScheduleRepo.load();
       final settings = await settingsRepo.load();
 
       final now = DateTime.now();
       final nowMinutes = now.hour * 60 + now.minute;
-      final withinWorkHours = nowMinutes >= settings.workStartMinutes &&
-          nowMinutes <= settings.workEndMinutes;
+      final isOffDay = officeSchedule.offDays.contains(now.weekday);
+      final withinWorkHours = nowMinutes >= officeSchedule.workStartMinutes &&
+          nowMinutes <= officeSchedule.workEndMinutes;
 
-      if (!withinWorkHours) {
+      if (isOffDay || !withinWorkHours) {
         return true;
       }
 
