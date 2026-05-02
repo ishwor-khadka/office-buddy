@@ -47,14 +47,33 @@ class OfficeScheduleRepository {
         .doc(_officeDocId)
         .get();
 
-    return snapshot.exists && snapshot.data() != null;
+    if (!snapshot.exists) return false;
+    return _hasValidScheduleMap(snapshot.data());
   }
 
   Future<bool> hasLocalSchedule() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey(_kStartMinutes) &&
-        prefs.containsKey(_kEndMinutes) &&
-        prefs.containsKey(_kOffDays);
+    if (!prefs.containsKey(_kStartMinutes) ||
+        !prefs.containsKey(_kEndMinutes) ||
+        !prefs.containsKey(_kOffDays)) {
+      return false;
+    }
+
+    final start = prefs.getInt(_kStartMinutes);
+    final end = prefs.getInt(_kEndMinutes);
+    final offDaysRaw = prefs.getStringList(_kOffDays);
+    if (start == null || end == null || offDaysRaw == null) {
+      return false;
+    }
+
+    List<int> offDays;
+    try {
+      offDays = offDaysRaw.map(int.parse).toList(growable: false);
+    } catch (_) {
+      return false;
+    }
+
+    return _isValidScheduleValues(start, end, offDays);
   }
 
   Future<OfficeSchedule?> loadFromFirebase() async {
@@ -111,5 +130,39 @@ class OfficeScheduleRepository {
           },
           SetOptions(merge: true),
         );
+  }
+
+  bool _hasValidScheduleMap(Map<String, dynamic>? data) {
+    if (data == null) return false;
+
+    final start = (data['workStartMinutes'] as num?)?.toInt();
+    final end = (data['workEndMinutes'] as num?)?.toInt();
+    final offDaysDynamic = data['offDays'] as List<dynamic>?;
+    if (start == null || end == null || offDaysDynamic == null) {
+      return false;
+    }
+
+    final offDays = offDaysDynamic
+        .whereType<num>()
+        .map((value) => value.toInt())
+        .toList(growable: false);
+
+    if (offDays.length != offDaysDynamic.length) {
+      return false;
+    }
+    return _isValidScheduleValues(start, end, offDays);
+  }
+
+  bool _isValidScheduleValues(int start, int end, List<int> offDays) {
+    const minutesPerDay = 24 * 60;
+    final validTimeRange =
+        start >= 0 &&
+        start < minutesPerDay &&
+        end >= 0 &&
+        end < minutesPerDay;
+    final validOffDays = offDays.every(
+      (day) => day >= DateTime.monday && day <= DateTime.sunday,
+    );
+    return validTimeRange && validOffDays;
   }
 }

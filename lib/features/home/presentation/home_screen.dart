@@ -7,6 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/router/app_routes.dart';
+import '../../../core/settings/office_schedule_repository.dart';
 import '../../../core/ui/ob_background.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,9 +18,25 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final OfficeScheduleRepository _officeScheduleRepository =
+      OfficeScheduleRepository();
   int? _selectedMood;
   bool _showMotivation = true;
   bool _showMoodSelector = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureOfficeScheduleConfigured();
+    });
+  }
+
+  Future<void> _ensureOfficeScheduleConfigured() async {
+    final hasSavedSchedule = await _officeScheduleRepository.hasSavedSchedule();
+    if (!mounted || hasSavedSchedule) return;
+    context.go(AppRoutes.onBoardingScreen);
+  }
 
   @override
   Widget build(BuildContext context) {

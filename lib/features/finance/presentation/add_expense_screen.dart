@@ -19,6 +19,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   ExpenseCategory? _selectedCategory;
+  DateTime _selectedDate = DateTime.now();
   bool _saving = false;
   Future<CurrencyPreference>? _currencyFuture;
 
@@ -47,6 +48,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         final categorySelected = _selectedCategory != null;
         final canSave = amountFilled && categorySelected && !_saving;
         final showDescription = _selectedCategory == ExpenseCategory.other;
+        final dateLabel = _formatDate(_selectedDate);
 
         return Scaffold(
           backgroundColor: const Color(0xFFF1F1F1),
@@ -243,12 +245,70 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               ),
                             ],
                             const SizedBox(height: 22),
+                            Text(
+                              'Expense Date',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: const Color(0xFF111827),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            InkWell(
+                              onTap: _saving
+                                  ? null
+                                  : () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: _selectedDate,
+                                        firstDate: DateTime(2000),
+                                        lastDate: DateTime(2100),
+                                      );
+                                      if (picked == null || !mounted) return;
+                                      setState(() => _selectedDate = picked);
+                                    },
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFD5D9E2),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.calendar_month,
+                                      color: Color(0xFF374151),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        dateLabel,
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              color: const Color(0xFF111827),
+                                            ),
+                                      ),
+                                    ),
+                                    const Icon(Icons.expand_more),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 22),
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: canSave
                                     ? () async {
                                         setState(() => _saving = true);
+                                        final messenger =
+                                            ScaffoldMessenger.of(context);
                                         try {
                                           await _repository.addExpense(
                                             amount: _amountController.text
@@ -257,9 +317,26 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                             description: _descriptionController
                                                 .text
                                                 .trim(),
+                                            expenseDate: _selectedDate,
                                           );
                                           if (!mounted) return;
+                                          messenger.showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Expense saved to cloud.',
+                                              ),
+                                            ),
+                                          );
                                           navigator.pop(true);
+                                        } catch (error) {
+                                          if (!mounted) return;
+                                          messenger.showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Failed to save expense: $error',
+                                              ),
+                                            ),
+                                          );
                                         } finally {
                                           if (mounted) {
                                             setState(() => _saving = false);
@@ -308,6 +385,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       },
     );
   }
+}
+
+String _formatDate(DateTime date) {
+  final y = date.year.toString();
+  final m = date.month.toString().padLeft(2, '0');
+  final d = date.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
 }
 
 enum ExpenseCategory {

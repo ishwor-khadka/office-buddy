@@ -186,7 +186,7 @@ class _BreakScreenState extends State<BreakScreen> {
                     ).animate().fade().slideY(begin: 0.2),
                     const SizedBox(height: 12),
                     Text(
-                      'Walk ${_requiredSteps} steps to dismiss.',
+                      'Walk $_requiredSteps steps to dismiss.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: theme.colorScheme.onErrorContainer.withOpacity(

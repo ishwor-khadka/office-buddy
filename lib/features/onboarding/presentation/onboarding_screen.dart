@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/router/app_routes.dart';
+import '../../../core/settings/currency_preference.dart';
+import '../../../core/settings/currency_preference_repository.dart';
 import '../../../core/settings/office_schedule.dart';
 import '../../../core/settings/office_schedule_repository.dart';
 import '../../../core/ui/ob_background.dart';
@@ -19,10 +21,13 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _kOnboarded = 'onboarded_v1';
   final OfficeScheduleRepository _repository = OfficeScheduleRepository();
+  final CurrencyPreferenceRepository _currencyRepository =
+      CurrencyPreferenceRepository();
 
   int _workStartMinutes = 9 * 60;
   int _workEndMinutes = 18 * 60;
   final Set<int> _offDays = <int>{DateTime.saturday, DateTime.sunday};
+  CurrencyPreference _selectedCurrency = CurrencyPreference.defaultPreference;
   bool _saving = false;
 
   @override
@@ -32,7 +37,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _loadExisting() async {
-    final schedule = await _repository.load();
+    final scheduleFuture = _repository.load();
+    final currencyFuture = _currencyRepository.load();
+    final schedule = await scheduleFuture;
+    final currency = await currencyFuture;
     if (!mounted) return;
     setState(() {
       _workStartMinutes = schedule.workStartMinutes;
@@ -40,6 +48,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _offDays
         ..clear()
         ..addAll(schedule.offDays);
+      _selectedCurrency = currencyPreferenceForCode(currency.code);
     });
   }
 
@@ -79,16 +88,121 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
+  Future<void> _pickCurrency() async {
+    var query = '';
+    var selected = _selectedCurrency;
+
+    final result = await showModalBottomSheet<CurrencyPreference>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filteredOptions = supportedCurrencyPreferences.where((option) {
+              if (query.trim().isEmpty) return true;
+              final q = query.toLowerCase();
+              return option.name.toLowerCase().contains(q) ||
+                  option.code.toLowerCase().contains(q) ||
+                  option.symbol.toLowerCase().contains(q);
+            }).toList(growable: false);
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+                  top: 20,
+                ),
+                child: ObGlass(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Choose Currency',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        onChanged: (value) {
+                          setSheetState(() => query = value);
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search currency, code, or symbol',
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.45),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.5,
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: filteredOptions.length,
+                          itemBuilder: (context, index) {
+                            final option = filteredOptions[index];
+                            final isSelected = selected.code == option.code;
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                              title: Text(option.name),
+                              subtitle: Text(option.code),
+                              trailing: Text(option.symbol),
+                              selected: isSelected,
+                              onTap: () {
+                                setSheetState(() => selected = option);
+                                Navigator.of(sheetContext).pop(option);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null || !mounted) return;
+    setState(() => _selectedCurrency = result);
+  }
+
   Future<void> _finish() async {
     setState(() => _saving = true);
     try {
-      final synced = await _repository.save(
+      final scheduleSynced = await _repository.save(
         OfficeSchedule(
           workStartMinutes: _workStartMinutes,
           workEndMinutes: _workEndMinutes,
           offDays: _offDays.toList()..sort(),
         ),
       );
+      final currencySynced = await _currencyRepository.save(_selectedCurrency);
+      final synced = scheduleSynced && currencySynced;
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kOnboarded, true);
@@ -135,81 +249,152 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       style: theme.textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 16),
-                    ObGlass(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Work hours', style: theme.textTheme.titleLarge),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _TimePill(
-                              label: 'Start',
-                              value: _fmtTime(_workStartMinutes),
-                              onTap: () => _pickTime(start: true),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            ObGlass(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Work hours',
+                                    style: theme.textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _TimePill(
+                                          label: 'Start',
+                                          value: _fmtTime(_workStartMinutes),
+                                          onTap: () => _pickTime(start: true),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _TimePill(
+                                          label: 'End',
+                                          value: _fmtTime(_workEndMinutes),
+                                          onTap: () =>
+                                              _pickTime(start: false),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _TimePill(
-                              label: 'End',
-                              value: _fmtTime(_workEndMinutes),
-                              onTap: () => _pickTime(start: false),
+                            const SizedBox(height: 14),
+                            ObGlass(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Off days',
+                                    style: theme.textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Select the days you do not work.',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: _weekdayLabels.entries.map((entry) {
+                                      final isSelected = _offDays.contains(
+                                        entry.key,
+                                      );
+                                      return FilterChip(
+                                        label: Text(entry.value),
+                                        selected: isSelected,
+                                        onSelected: (_) =>
+                                            _toggleOffDay(entry.key),
+                                        showCheckmark: false,
+                                        selectedColor: ObTokens.mint.withValues(
+                                          alpha: 0.34,
+                                        ),
+                                        backgroundColor: Colors.white.withValues(
+                                          alpha: 0.32,
+                                        ),
+                                        labelStyle: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                            ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                          side: BorderSide(
+                                            color: isSelected
+                                                ? ObTokens.mint
+                                                : Colors.white.withValues(
+                                                    alpha: 0.35,
+                                                  ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(height: 14),
+                            ObGlass(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Currency',
+                                    style: theme.textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Choose your default currency for finance tracking.',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  InkWell(
+                                    onTap: _pickCurrency,
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.44,
+                                        ),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              '${_selectedCurrency.name} (${_selectedCurrency.displayLabel})',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: theme.textTheme.bodyLarge,
+                                            ),
+                                          ),
+                                          const Icon(Icons.expand_more),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
-                    ObGlass(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Off days', style: theme.textTheme.titleLarge),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Select the days you do not work.',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: _weekdayLabels.entries.map((entry) {
-                              final isSelected = _offDays.contains(entry.key);
-                              return FilterChip(
-                                label: Text(entry.value),
-                                selected: isSelected,
-                                onSelected: (_) => _toggleOffDay(entry.key),
-                                showCheckmark: false,
-                                selectedColor: ObTokens.mint.withValues(
-                                  alpha: 0.34,
-                                ),
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.32,
-                                ),
-                                labelStyle: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight:
-                                      isSelected ? FontWeight.w700 : FontWeight.w500,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999),
-                                  side: BorderSide(
-                                    color: isSelected
-                                        ? ObTokens.mint
-                                        : Colors.white.withValues(alpha: 0.35),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
                     ElevatedButton(
                       onPressed: _saving ? null : _finish,
                       style: ElevatedButton.styleFrom(

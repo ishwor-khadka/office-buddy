@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isNonEmptyString(value, maxLen) {
+      return value is string && value.size() > 0 && value.size() <= maxLen;
+    }
+
+    function isOptionalString(value, maxLen) {
+      return value == null || (value is string && value.size() <= maxLen);
+    }
+
+    function isValidAmount(value) {
+      return value is string && value.matches('^\\d+(\\.\\d{1,2})?$');
+    }
+
+    function isValidDateLabel(value) {
+      return value is string && value.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isMillis(value) {
+      return value is int && value > 0;
+    }
+
+    function isValidExpensePayload(data) {
+      return data.keys().hasOnly([
+          'amount',
+          'currencyCode',
+          'category',
+          'description',
+          'dateLabel',
+          'expenseDateMillis',
+          'createdAtMillis',
+          'updatedAt'
+        ])
+        && isValidAmount(data.amount)
+        && isNonEmptyString(data.currencyCode, 8)
+        && isNonEmptyString(data.category, 64)
+        && (data.description == null || isOptionalString(data.description, 200))
+        && isValidDateLabel(data.dateLabel)
+        && isMillis(data.expenseDateMillis)
+        && isMillis(data.createdAtMillis)
+        && (data.updatedAt == null || data.updatedAt is timestamp);
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      match /expenses/{expenseId} {
+        allow create: if isOwner(userId) && isValidExpensePayload(request.resource.data);
+        allow update: if isOwner(userId)
+          && request.resource.data.createdAtMillis == resource.data.createdAtMillis
+          && isValidExpensePayload(request.resource.data);
+        allow delete: if isOwner(userId);
+        allow read: if isOwner(userId);
+      }
+
+      match /settings/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

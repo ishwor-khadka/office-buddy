@@ -54,7 +54,8 @@ GoRouter _createAppRouter() {
       }
 
       if (goingToLogin) {
-        return AppRoutes.homeScreen;
+        // Route through splash so schedule/onboarding checks always run.
+        return AppRoutes.splashScreen;
       }
 
       return null;

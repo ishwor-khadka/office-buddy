@@ -287,6 +287,7 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _editCurrencyPreference(CurrencyPreference current) async {
+    var query = '';
     var selected = current;
 
     final result = await showModalBottomSheet<CurrencyPreference>(
@@ -296,6 +297,14 @@ class _AccountScreenState extends State<AccountScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final filteredOptions = supportedCurrencyPreferences.where((option) {
+              if (query.trim().isEmpty) return true;
+              final q = query.toLowerCase();
+              return option.name.toLowerCase().contains(q) ||
+                  option.code.toLowerCase().contains(q) ||
+                  option.symbol.toLowerCase().contains(q);
+            }).toList(growable: false);
+
             return SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(
@@ -324,21 +333,48 @@ class _AccountScreenState extends State<AccountScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: supportedCurrencyPreferences
-                            .map((option) {
-                              final isSelected = selected.code == option.code;
-                              return ChoiceChip(
-                                label: Text(option.displayLabel),
-                                selected: isSelected,
-                                onSelected: (_) {
-                                  setSheetState(() => selected = option);
-                                },
-                              );
-                            })
-                            .toList(growable: false),
+                      TextField(
+                        onChanged: (value) {
+                          setSheetState(() => query = value);
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search currency, code, or symbol',
+                          prefixIcon: const Icon(Icons.search),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.45,
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: filteredOptions.length,
+                          itemBuilder: (context, index) {
+                            final option = filteredOptions[index];
+                            final isSelected = selected.code == option.code;
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                              title: Text(option.name),
+                              subtitle: Text(option.code),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(option.symbol),
+                                  if (isSelected) ...[
+                                    const SizedBox(width: 8),
+                                    const Icon(Icons.check_circle, size: 18),
+                                  ],
+                                ],
+                              ),
+                              onTap: () {
+                                setSheetState(() => selected = option);
+                              },
+                            );
+                          },
+                        ),
                       ),
                       const SizedBox(height: 18),
                       ElevatedButton(

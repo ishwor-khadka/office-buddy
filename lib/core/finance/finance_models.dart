@@ -5,6 +5,7 @@ class FinanceExpenseRecord {
     required this.category,
     required this.description,
     required this.dateLabel,
+    required this.expenseDateMillis,
     required this.createdAtMillis,
   });
 
@@ -13,6 +14,7 @@ class FinanceExpenseRecord {
   final String category;
   final String description;
   final String dateLabel;
+  final int expenseDateMillis;
   final int createdAtMillis;
 
   factory FinanceExpenseRecord.fromJson(Map<String, dynamic> json) {
@@ -22,6 +24,7 @@ class FinanceExpenseRecord {
       category: json['category'] as String? ?? 'Other',
       description: json['description'] as String? ?? '',
       dateLabel: json['dateLabel'] as String? ?? '',
+      expenseDateMillis: (json['expenseDateMillis'] as num?)?.toInt() ?? 0,
       createdAtMillis: (json['createdAtMillis'] as num?)?.toInt() ?? 0,
     );
   }
@@ -33,6 +36,7 @@ class FinanceExpenseRecord {
       'category': category,
       'description': description,
       'dateLabel': dateLabel,
+      'expenseDateMillis': expenseDateMillis,
       'createdAtMillis': createdAtMillis,
     };
   }

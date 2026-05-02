@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../firebase/firebase_bootstrap.dart';
 import '../settings/currency_preference_repository.dart';
@@ -104,23 +105,32 @@ class FinanceRepository {
     required String amount,
     required String category,
     required String description,
+    required DateTime expenseDate,
   }) async {
+    final normalizedAmount = _normalizeAmountForFirestore(amount);
+    if (normalizedAmount == null) {
+      throw const FormatException(
+        'Amount must be a number with up to 2 decimal places.',
+      );
+    }
+
     final currency = await _currencyRepository.load();
     final summary = await _loadSummaryWithSymbol(currency.symbol);
     final todayExpense = _addMoney(
       summary.todayExpenseAmount,
-      amount,
+      normalizedAmount,
       currency.symbol,
     );
     final totalTransactions = summary.totalTransactions + 1;
 
     await _saveExpenseRecord(
       FinanceExpenseRecord(
-        amount: amount,
+        amount: normalizedAmount,
         currencyCode: currency.code,
         category: category,
         description: description,
-        dateLabel: _todayLabel(),
+        dateLabel: _dateLabel(expenseDate),
+        expenseDateMillis: expenseDate.millisecondsSinceEpoch,
         createdAtMillis: DateTime.now().millisecondsSinceEpoch,
       ),
     );
@@ -159,7 +169,16 @@ class FinanceRepository {
   Future<void> _saveExpenseRecord(FinanceExpenseRecord expense) async {
     final firestore = FirebaseBootstrap.firestoreOrNull;
     final user = FirebaseBootstrap.authOrNull?.currentUser;
-    if (firestore == null || user == null) return;
+    if (firestore == null) {
+      throw StateError('Firebase Firestore is not configured.');
+    }
+    if (user == null) {
+      throw StateError('You must be signed in to save expenses.');
+    }
+
+    debugPrint(
+      'Saving expense to project=${firestore.app.options.projectId}, uid=${user.uid}',
+    );
 
     await firestore
         .collection(_collectionPath)
@@ -237,7 +256,30 @@ class FinanceRepository {
   }
 
   String _todayLabel() {
-    final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return _dateLabel(DateTime.now());
+  }
+
+  String _dateLabel(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String? _normalizeAmountForFirestore(String raw) {
+    final cleaned = extractMoneyValue(raw).trim();
+    if (cleaned.isEmpty) return null;
+
+    final directMatch = RegExp(r'^\d+(\.\d{1,2})?$');
+    if (directMatch.hasMatch(cleaned)) {
+      return cleaned;
+    }
+
+    final parsed = double.tryParse(cleaned);
+    if (parsed == null) return null;
+
+    final normalized = parsed
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'\.0+$'), '')
+        .replaceFirst(RegExp(r'(\.\d*[1-9])0+$'), r'$1');
+
+    return directMatch.hasMatch(normalized) ? normalized : null;
   }
 }
