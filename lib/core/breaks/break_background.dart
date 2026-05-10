@@ -1,9 +1,13 @@
+import 'dart:math';
+
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../firebase/firebase_bootstrap.dart';
+import '../hydration/hydration_repository.dart';
 import '../notifications/notification_service.dart';
 import '../router/app_routes.dart';
+import '../settings/office_schedule.dart';
 import '../settings/office_schedule_repository.dart';
 import '../settings/settings_repository.dart';
 import 'break_state_repository.dart';
@@ -11,6 +15,13 @@ import '../data/database_helper.dart';
 
 class BreakBackground {
   static const String periodicTaskName = 'office_buddy_break_tick';
+  static const String hydrationRetryTaskName = 'office_buddy_hydration_retry';
+  static const int _hydrationPerDayLimit = 6;
+  static const int _hydrationAmountMl = 250;
+  static const int _hydrationIntervalMinutes = 75;
+  static const int _hydrationRetryDelayMinutes = 3;
+  static const int _hydrationFirstOffsetMinutes = 30;
+  static const int _hydrationLastOffsetMinutes = 30;
 
   static Future<void> initialize() async {
     await Workmanager().initialize(callbackDispatcher);
@@ -23,6 +34,12 @@ class BreakBackground {
       periodicTaskName,
       frequency: const Duration(minutes: 15),
       existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+    );
+    await Workmanager().registerOneOffTask(
+      hydrationRetryTaskName,
+      hydrationRetryTaskName,
+      initialDelay: const Duration(minutes: _hydrationRetryDelayMinutes),
+      existingWorkPolicy: ExistingWorkPolicy.replace,
     );
   }
 
@@ -40,14 +57,26 @@ class BreakBackground {
       final breakStateRepo = BreakStateRepository();
       final officeSchedule = await officeScheduleRepo.load();
       final settings = await settingsRepo.load();
+      final hydrationRepo = HydrationRepository();
 
       final now = DateTime.now();
       final nowMinutes = now.hour * 60 + now.minute;
       final isOffDay = officeSchedule.offDays.contains(now.weekday);
-      final withinWorkHours = nowMinutes >= officeSchedule.workStartMinutes &&
+      final withinWorkHours =
+          nowMinutes >= officeSchedule.workStartMinutes &&
           nowMinutes <= officeSchedule.workEndMinutes;
 
       if (isOffDay || !withinWorkHours) {
+        return true;
+      }
+
+      await _processHydration(
+        now: now,
+        officeSchedule: officeSchedule,
+        hydrationRepo: hydrationRepo,
+      );
+
+      if (task != periodicTaskName) {
         return true;
       }
 
@@ -139,5 +168,113 @@ class BreakBackground {
 
       return true;
     });
+  }
+
+  static Future<void> _processHydration({
+    required DateTime now,
+    required OfficeSchedule officeSchedule,
+    required HydrationRepository hydrationRepo,
+  }) async {
+    final nowMs = now.millisecondsSinceEpoch;
+    final dayStart = DateTime(now.year, now.month, now.day);
+    final dayStartMs = dayStart.millisecondsSinceEpoch;
+    final firstReminderMinutes =
+        officeSchedule.workStartMinutes + _hydrationFirstOffsetMinutes;
+    final lastReminderMinutes =
+        officeSchedule.workEndMinutes - _hydrationLastOffsetMinutes;
+    final nowMinutes = now.hour * 60 + now.minute;
+
+    if (lastReminderMinutes <= firstReminderMinutes) {
+      return;
+    }
+    if (nowMinutes < firstReminderMinutes || nowMinutes > lastReminderMinutes) {
+      return;
+    }
+
+    final dayEntries = (await hydrationRepo.loadEntries())
+        .where((entry) {
+          final t = (entry['t'] as num?)?.toInt();
+          if (t == null) return false;
+          return t >= dayStartMs;
+        })
+        .toList(growable: false);
+
+    if (dayEntries.length >= _hydrationPerDayLimit) {
+      await hydrationRepo.clearPendingPrompt();
+      return;
+    }
+
+    final pendingSince = await hydrationRepo.getPendingSinceMillis();
+    final retryCount = await hydrationRepo.getPendingRetryCount();
+    if (pendingSince != null) {
+      if (nowMs - pendingSince >= _hydrationRetryDelayMinutes * 60 * 1000 &&
+          retryCount < 1) {
+        await _sendHydrationPrompt(
+          hydrationRepo: hydrationRepo,
+          nowMs: nowMs,
+          retryCount: retryCount + 1,
+        );
+      }
+      return;
+    }
+
+    final lastAck = await hydrationRepo.getLastAcknowledgedAtMillis();
+    final dueToStart = nowMinutes >= firstReminderMinutes;
+    final dueToInterval =
+        lastAck != null &&
+        (nowMs - lastAck) >= (_hydrationIntervalMinutes * 60 * 1000);
+    final noPromptYetToday = dayEntries.isEmpty;
+    final dueForNext = noPromptYetToday ? dueToStart : dueToInterval;
+    if (!dueForNext) return;
+
+    // Ensure there is enough room for one retry before office close.
+    if (nowMinutes + _hydrationRetryDelayMinutes > lastReminderMinutes) {
+      return;
+    }
+
+    await _sendHydrationPrompt(
+      hydrationRepo: hydrationRepo,
+      nowMs: nowMs,
+      retryCount: 0,
+    );
+  }
+
+  static Future<void> _sendHydrationPrompt({
+    required HydrationRepository hydrationRepo,
+    required int nowMs,
+    required int retryCount,
+  }) async {
+    final random = Random(nowMs);
+    final title =
+        NotificationService.hydrationTitles[random.nextInt(
+          NotificationService.hydrationTitles.length,
+        )];
+    final body =
+        NotificationService.hydrationBodies[random.nextInt(
+          NotificationService.hydrationBodies.length,
+        )];
+    final actionLabel =
+        NotificationService.hydrationActionLabels[random.nextInt(
+          NotificationService.hydrationActionLabels.length,
+        )];
+    final notificationId = 700 + random.nextInt(100000);
+
+    await NotificationService.showHydrationReminder(
+      id: notificationId,
+      title: title,
+      body: '$body (+$_hydrationAmountMl mL)',
+      actionLabel: actionLabel,
+    );
+    await hydrationRepo.setPendingPrompt(
+      sinceMillis: nowMs,
+      notificationId: notificationId,
+      retryCount: retryCount,
+    );
+    await Workmanager().registerOneOffTask(
+      hydrationRetryTaskName,
+      hydrationRetryTaskName,
+      initialDelay: const Duration(minutes: _hydrationRetryDelayMinutes),
+      existingWorkPolicy: ExistingWorkPolicy.replace,
+    );
   }
 }

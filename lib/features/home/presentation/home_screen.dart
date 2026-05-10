@@ -40,8 +40,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userName =
-        FirebaseBootstrap.authOrNull?.currentUser?.displayName?.trim();
+    final userName = FirebaseBootstrap.authOrNull?.currentUser?.displayName
+        ?.trim();
 
     return Scaffold(
       body: ObBackground(
@@ -114,7 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 16),
 
                     // Moment Card
-                    _MomentCard(onTap: () => context.push(AppRoutes.stressScreen))
+                    _MomentCard(
+                          onTap: () => context.push(AppRoutes.stressScreen),
+                        )
                         .animate()
                         .fade(delay: 260.ms, duration: 320.ms)
                         .slideY(begin: 0.08, end: 0),
@@ -138,7 +140,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                     shadowColor: const Color(0xFF3A6FF7),
                                     height: 224,
-                                    onTap: () => context.push(AppRoutes.postureScreen),
+                                    onTap: () =>
+                                        context.push(AppRoutes.postureScreen),
                                   ),
                                   const SizedBox(height: 16),
                                   _FeatureCard(
@@ -151,7 +154,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                     shadowColor: const Color(0xFF10B981),
                                     height: 176,
-                                    onTap: () => context.push(AppRoutes.breakScreen),
+                                    onTap: () =>
+                                        context.push(AppRoutes.breakScreen),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _FeatureCard(
+                                    title: 'Hydration',
+                                    subtitle: 'Track water',
+                                    icon: Icons.water_drop_rounded,
+                                    gradient: const [
+                                      Color(0xFF38BDF8),
+                                      Color(0xFF0EA5E9),
+                                    ],
+                                    shadowColor: const Color(0xFF0EA5E9),
+                                    height: 140,
+                                    onTap: () =>
+                                        context.push(AppRoutes.hydrationScreen),
                                   ),
                                 ],
                               ),
@@ -170,11 +188,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                     shadowColor: const Color(0xFF8B5CF6),
                                     height: 176,
-                                    onTap: () => context.push(AppRoutes.eyesScreen),
+                                    onTap: () =>
+                                        context.push(AppRoutes.eyesScreen),
                                   ),
                                   const SizedBox(height: 16),
                                   _FeatureCard(
-                                    onTap: () => context.push(AppRoutes.financeScreen),
+                                    onTap: () =>
+                                        context.push(AppRoutes.financeScreen),
                                     title: 'Finance\nTracker',
                                     subtitle: 'Review expenses',
                                     icon: LucideIcons.wallet,

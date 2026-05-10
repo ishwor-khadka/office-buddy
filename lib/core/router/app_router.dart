@@ -25,6 +25,7 @@ import '../../features/finance/presentation/add_expense_screen.dart';
 import '../../features/finance/presentation/lend_borrow_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/account/presentation/account_screen.dart';
+import '../../features/hydration/presentation/hydration_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -149,6 +150,10 @@ GoRouter _createAppRouter() {
       GoRoute(
         path: AppRoutes.breakScreen,
         builder: (context, state) => const BreakScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.hydrationScreen,
+        builder: (context, state) => const HydrationScreen(),
       ),
     ],
   );
