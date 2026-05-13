@@ -15,4 +15,5 @@ class AppRoutes {
   static const String financePersonScreen = '/finance/person-screen';
   static const String financeLendBorrowScreen = '/finance/lend-borrow-screen';
   static const String breakScreen = '/break-screen';
+  static const String wordLadderScreen = '/word-ladder-screen';
 }

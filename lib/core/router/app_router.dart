@@ -25,6 +25,7 @@ import '../../features/finance/presentation/add_expense_screen.dart';
 import '../../features/finance/presentation/lend_borrow_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/account/presentation/account_screen.dart';
+import '../../features/word_ladder/screens/word_ladder_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -150,6 +151,10 @@ GoRouter _createAppRouter() {
         path: AppRoutes.breakScreen,
         builder: (context, state) => const BreakScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.wordLadderScreen,
+        builder: (context, state) => const WordLadderScreen(),
+      ),
     ],
   );
 }
@@ -183,6 +188,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   final List<Widget> _screens = const [
     HomeScreen(),
     HistoryScreen(),
+    WordLadderScreen(),
     SleepScreen(),
     ExercisesScreen(),
   ];
@@ -196,7 +202,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       bottomNavigationBar: ObBottomBar(
         currentIndex: _currentIndex,
         onSelect: (i) {
-          setState(() => _currentIndex = i.clamp(0, 3));
+          setState(() => _currentIndex = i.clamp(0, 4));
         },
       ),
     );
