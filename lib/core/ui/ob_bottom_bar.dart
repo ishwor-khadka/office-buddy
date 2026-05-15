@@ -9,7 +9,7 @@ class ObBottomBar extends StatelessWidget {
     required this.onSelect,
   });
 
-  final int currentIndex; // 0=Home, 1=Stats, 2=Sleep, 3=Exercise
+  final int currentIndex; // 0=Home, 1=Exercise
   final void Function(int index) onSelect;
 
   Color _activeColor(ThemeData theme) => const Color(0xFF00B78B);
@@ -53,32 +53,12 @@ class ObBottomBar extends StatelessWidget {
             ),
             Expanded(
               child: _Item(
-                label: 'Stats',
-                icon: Icons.bar_chart_rounded,
+                label: 'Exercise',
+                icon: Icons.fitness_center_rounded,
                 active: currentIndex == 1,
                 activeColor: _activeColor(theme),
                 inactiveColor: _inactiveColor(theme),
                 onTap: () => onSelect(1),
-              ),
-            ),
-            Expanded(
-              child: _Item(
-                label: 'Sleep',
-                icon: Icons.nights_stay_rounded,
-                active: currentIndex == 2,
-                activeColor: _activeColor(theme),
-                inactiveColor: _inactiveColor(theme),
-                onTap: () => onSelect(2),
-              ),
-            ),
-            Expanded(
-              child: _Item(
-                label: 'Exercise',
-                icon: Icons.fitness_center_rounded,
-                active: currentIndex == 3,
-                activeColor: _activeColor(theme),
-                inactiveColor: _inactiveColor(theme),
-                onTap: () => onSelect(3),
               ),
             ),
           ],
