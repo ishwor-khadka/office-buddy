@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:office_buddy/core/router/app_routes.dart';
+import 'core/ui/ui_refresh_bus.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/firebase/firebase_bootstrap.dart';
@@ -32,12 +33,17 @@ class OfficeHealthApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return MaterialApp.router(
-      title: 'Office Buddy',
-      theme: AppTheme.glassLightTheme,
-      themeMode: ThemeMode.light,
-      routerConfig: appRouter,
-      debugShowCheckedModeBanner: false,
+    return ValueListenableBuilder<int>(
+      valueListenable: UiRefreshBus.instance.tick,
+      builder: (context, _, child) {
+        return MaterialApp.router(
+          title: 'Office Buddy',
+          theme: AppTheme.glassLightTheme,
+          themeMode: ThemeMode.light,
+          routerConfig: appRouter,
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }

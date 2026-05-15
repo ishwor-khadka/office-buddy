@@ -1,15 +1,17 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import '../../../core/ui/ui_refresh_bus.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/router/app_routes.dart';
-import '../../../core/settings/office_schedule_repository.dart';
 import '../../../core/ui/ob_background.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
+import '../../breaks/presentation/break_screen.dart';
+import '../../eyes/presentation/eye_dryness_screen.dart';
+import '../../posture/presentation/posture_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,31 +21,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final OfficeScheduleRepository _officeScheduleRepository =
-      OfficeScheduleRepository();
   int? _selectedMood;
   bool _showMotivation = true;
   bool _showMoodSelector = true;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureOfficeScheduleConfigured();
-    });
-  }
-
-  Future<void> _ensureOfficeScheduleConfigured() async {
-    final hasSavedSchedule = await _officeScheduleRepository.hasSavedSchedule();
-    if (!mounted || hasSavedSchedule) return;
-    context.go(AppRoutes.onBoardingScreen);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final userName = FirebaseBootstrap.authOrNull?.currentUser?.displayName
-        ?.trim();
-
     return Scaffold(
       body: ObBackground(
         child: Stack(
@@ -56,27 +39,29 @@ class _HomeScreenState extends State<HomeScreen> {
             SafeArea(
               bottom: false,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 132),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _HomeHeader(userName: userName ?? 'Alex')
+                    const _HomeHeader()
                         .animate()
                         .fade(duration: 320.ms)
                         .slideY(begin: -0.08, end: 0),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 12),
 
                     // Daily Motivation Card
                     if (_showMotivation)
                       _MotivationCard(
-                            onDismiss: () =>
-                                UiRefreshBus.instance.update(this, () => _showMotivation = false),
+                            onDismiss: () => UiRefreshBus.instance.update(
+                              this,
+                              () => _showMotivation = false,
+                            ),
                           )
                           .animate()
                           .fade(delay: 80.ms, duration: 320.ms)
                           .slideY(begin: 0.08, end: 0),
 
-                    if (_showMotivation) const SizedBox(height: 20),
+                    if (_showMotivation) const SizedBox(height: 12),
 
                     // Mood Selector Card
                     if (_showMoodSelector)
@@ -92,127 +77,119 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const Duration(milliseconds: 400),
                                 () {
                                   if (mounted) {
-                                    UiRefreshBus.instance.update(this, () => _showMoodSelector = false);
+                                    UiRefreshBus.instance.update(
+                                      this,
+                                      () => _showMoodSelector = false,
+                                    );
                                   }
                                 },
                               );
                             },
-                            onDismiss: () =>
-                                UiRefreshBus.instance.update(this, () => _showMoodSelector = false),
+                            onDismiss: () => UiRefreshBus.instance.update(
+                              this,
+                              () => _showMoodSelector = false,
+                            ),
                           )
                           .animate()
                           .fade(delay: 140.ms, duration: 320.ms)
                           .slideY(begin: 0.08, end: 0),
 
-                    if (_showMoodSelector) const SizedBox(height: 20),
-
-                    // Daily Activity Card
-                    const _DailyActivityCard()
-                        .animate()
-                        .fade(delay: 200.ms, duration: 320.ms)
-                        .slideY(begin: 0.08, end: 0),
-
-                    const SizedBox(height: 16),
+                    if (_showMoodSelector) const SizedBox(height: 12),
 
                     // Moment Card
                     _MomentCard(
                           onTap: () => context.push(AppRoutes.stressScreen),
                         )
                         .animate()
-                        .fade(delay: 260.ms, duration: 320.ms)
+                        .fade(delay: 200.ms, duration: 320.ms)
                         .slideY(begin: 0.08, end: 0),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Feature Cards Grid
-                    Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    StaggeredGrid.count(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
                           children: [
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _FeatureCard(
-                                    title: 'Check\nPosture',
-                                    subtitle: 'Verify sitting\nposition',
-                                    icon: LucideIcons.scanFace,
-                                    gradient: const [
-                                      Color(0xFF5B8CFF),
-                                      Color(0xFF3A6FF7),
-                                    ],
-                                    shadowColor: const Color(0xFF3A6FF7),
-                                    height: 224,
-                                    onTap: () =>
-                                        context.push(AppRoutes.postureScreen),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _FeatureCard(
-                                    title: 'Movement',
-                                    subtitle: 'Stretch & walk',
-                                    icon: LucideIcons.footprints,
-                                    gradient: const [
-                                      Color(0xFF34D399),
-                                      Color(0xFF10B981),
-                                    ],
-                                    shadowColor: const Color(0xFF10B981),
-                                    height: 176,
-                                    onTap: () =>
-                                        context.push(AppRoutes.breakScreen),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _FeatureCard(
-                                    title: 'Hydration',
-                                    subtitle: 'Track water',
-                                    icon: Icons.water_drop_rounded,
-                                    gradient: const [
-                                      Color(0xFF38BDF8),
-                                      Color(0xFF0EA5E9),
-                                    ],
-                                    shadowColor: const Color(0xFF0EA5E9),
-                                    height: 140,
-                                    onTap: () =>
-                                        context.push(AppRoutes.hydrationScreen),
-                                  ),
+                            StaggeredGridTile.fit(
+                              crossAxisCellCount: 1,
+                              child: _FeatureCard(
+                                title: 'Check\nPosture',
+                                subtitle: 'Verify sitting\nposition',
+                                icon: LucideIcons.scanFace,
+                                gradient: const [
+                                  Color(0xFF5B8CFF),
+                                  Color(0xFF3A6FF7),
                                 ],
+                                shadowColor: const Color(0xFF3A6FF7),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const PostureScreen(),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _FeatureCard(
-                                    title: 'Eye Check',
-                                    subtitle: 'Blink and rest',
-                                    icon: LucideIcons.eye,
-                                    gradient: const [
-                                      Color(0xFFA78BFA),
-                                      Color(0xFF8B5CF6),
-                                    ],
-                                    shadowColor: const Color(0xFF8B5CF6),
-                                    height: 176,
-                                    onTap: () =>
-                                        context.push(AppRoutes.eyesScreen),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _FeatureCard(
-                                    onTap: () =>
-                                        context.push(AppRoutes.financeScreen),
-                                    title: 'Finance\nTracker',
-                                    subtitle: 'Review expenses',
-                                    icon: LucideIcons.wallet,
-                                    gradient: const [
-                                      Color(0xFFFF6B8A),
-                                      Color(0xFFFF3D6E),
-                                    ],
-                                    shadowColor: const Color(0xFFFF3D6E),
-                                    height: 224,
-                                  ),
+                            StaggeredGridTile.fit(
+                              crossAxisCellCount: 1,
+                              child: _FeatureCard(
+                                title: 'Eye Check',
+                                subtitle: 'Blink and rest',
+                                icon: LucideIcons.eye,
+                                gradient: const [
+                                  Color(0xFFA78BFA),
+                                  Color(0xFF8B5CF6),
                                 ],
+                                shadowColor: const Color(0xFF8B5CF6),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const EyeDrynessScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            StaggeredGridTile.fit(
+                              crossAxisCellCount: 1,
+                              child: _FeatureCard(
+                                title: 'Movement',
+                                subtitle: 'Stretch & walk',
+                                icon: LucideIcons.footprints,
+                                gradient: const [
+                                  Color(0xFF34D399),
+                                  Color(0xFF10B981),
+                                ],
+                                shadowColor: const Color(0xFF10B981),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => const BreakScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const StaggeredGridTile.fit(
+                              crossAxisCellCount: 1,
+                              child: _FeatureCard(
+                                title: 'Finance\nTracker',
+                                subtitle: 'Review expenses',
+                                icon: LucideIcons.wallet,
+                                gradient: [
+                                  Color(0xFFFF6B8A),
+                                  Color(0xFFFF3D6E),
+                                ],
+                                shadowColor: Color(0xFFFF3D6E),
+                                enabled: false,
                               ),
                             ),
                           ],
                         )
                         .animate()
-                        .fade(delay: 320.ms, duration: 360.ms)
+                        .fade(delay: 260.ms, duration: 360.ms)
                         .slideY(begin: 0.1, end: 0),
                   ],
                 ),
@@ -226,9 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.userName});
-
-  final String userName;
+  const _HomeHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -237,15 +212,15 @@ class _HomeHeader extends StatelessWidget {
       children: [
         // Avatar with progress ring
         SizedBox(
-          width: 72,
-          height: 72,
+          width: 60,
+          height: 60,
           child: Stack(
             alignment: Alignment.center,
             children: [
               // Progress ring
               SizedBox(
-                width: 72,
-                height: 72,
+                width: 60,
+                height: 60,
                 child: CustomPaint(
                   painter: _ProgressRingPainter(
                     progress: 0.75,
@@ -257,8 +232,8 @@ class _HomeHeader extends StatelessWidget {
               ),
               // Avatar
               Container(
-                width: 64,
-                height: 64,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white,
@@ -276,7 +251,7 @@ class _HomeHeader extends StatelessWidget {
                     color: const Color(0xFFF3F4F6),
                     child: const Icon(
                       Icons.person_rounded,
-                      size: 36,
+                      size: 30,
                       color: Color(0xFF9CA3AF),
                     ),
                   ),
@@ -285,21 +260,21 @@ class _HomeHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hi, $userName ',
+                'Hi, Alex ',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF101828),
                   letterSpacing: -0.5,
-                  fontSize: 26,
+                  fontSize: 22,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Row(
                 children: [
                   // Glowing green dot
@@ -399,7 +374,7 @@ class _MotivationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -409,7 +384,7 @@ class _MotivationCard extends StatelessWidget {
             const Color(0xFFFFF7ED).withValues(alpha: 0.5),
           ],
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.white, width: 1.5),
         boxShadow: [
           BoxShadow(
@@ -429,7 +404,7 @@ class _MotivationCard extends StatelessWidget {
               '"',
               style: TextStyle(
                 fontFamily: 'Georgia',
-                fontSize: 80,
+                fontSize: 52,
                 color: const Color(0xFFFF6900).withValues(alpha: 0.1),
                 height: 1,
               ),
@@ -451,17 +426,18 @@ class _MotivationCard extends StatelessWidget {
                         fontSize: 11,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       "Take care of your body. It's the only place you have to live.",
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: const Color(0xFF1E2939),
                         fontWeight: FontWeight.w700,
-                        height: 1.4,
+                        height: 1.25,
+                        fontSize: 16,
                         letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       '— Jim Rohn',
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -473,28 +449,11 @@ class _MotivationCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              GestureDetector(
-                onTap: onDismiss,
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF2F2),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    LucideIcons.x,
-                    size: 16,
-                    color: Color(0xFFEF4444),
-                  ),
-                ),
+              IconButton(
+                onPressed: onDismiss,
+                icon: const Icon(LucideIcons.x, size: 18),
+                color: const Color(0xFFEF4444),
+                tooltip: 'Close',
               ),
             ],
           ),
@@ -521,7 +480,7 @@ class _MoodSelectorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -531,7 +490,7 @@ class _MoodSelectorCard extends StatelessWidget {
             const Color(0xFFF9FAFB).withValues(alpha: 0.8),
           ],
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.white, width: 1.5),
         boxShadow: [
           BoxShadow(
@@ -541,309 +500,82 @@ class _MoodSelectorCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Decorative blurs
-          Positioned(
-            right: -40,
-            top: -40,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: const Color(0xFFDBEAFE).withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            left: -40,
-            bottom: -40,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3E8FF).withValues(alpha: 0.5),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Text(
-                        'How are you feeling today?',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: const Color(0xFF1E2939),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Text(
+                    'How are you feeling today?',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: const Color(0xFF1E2939),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: onDismiss,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF2F2),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        LucideIcons.x,
-                        size: 16,
-                        color: Color(0xFFEF4444),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6).withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(_moods.length, (index) {
-                    final isSelected = selectedMood == index;
-                    return GestureDetector(
-                      onTap: () => onMoodSelected(index),
-                      child: AnimatedContainer(
-                        duration: 200.ms,
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected
-                                ? const Color(0xFF6C5CE7)
-                                : const Color(0xFFF9FAFB),
-                            width: isSelected ? 2 : 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isSelected ? 0.1 : 0.05,
-                              ),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            _moods[index],
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
+              IconButton(
+                onPressed: onDismiss,
+                icon: const Icon(LucideIcons.x, size: 18),
+                color: const Color(0xFFEF4444),
+                tooltip: 'Close',
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DailyActivityCard extends StatelessWidget {
-  const _DailyActivityCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      height: 232,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFACC15), Color(0xFFF59E0B)],
-        ),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
-            blurRadius: 30,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Decorative glow circles
-          Positioned(
-            right: -48,
-            top: -48,
-            child: Container(
-              width: 192,
-              height: 192,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6).withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.6),
+                width: 1.5,
               ),
             ),
-          ),
-          Positioned(
-            left: -32,
-            bottom: -32,
-            child: Container(
-              width: 128,
-              height: 128,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Fire icon container
-                  Container(
-                    width: 56,
-                    height: 56,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(_moods.length, (index) {
+                final isSelected = selectedMood == index;
+                return GestureDetector(
+                  onTap: () => onMoodSelected(index),
+                  child: AnimatedContainer(
+                    duration: 200.ms,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                    child: const Icon(
-                      Icons.local_fire_department_rounded,
                       color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  const Spacer(),
-                  // Streak badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 1.5,
+                        color: isSelected
+                            ? const Color(0xFF6C5CE7)
+                            : const Color(0xFFF9FAFB),
+                        width: isSelected ? 2 : 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.local_fire_department_rounded,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '12 Day Streak',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                          color: Colors.black.withValues(
+                            alpha: isSelected ? 0.1 : 0.05,
                           ),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                'Daily Activity',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  fontSize: 30,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "You've hit 80% of your daily goal",
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Progress bar
-              Container(
-                height: 10,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  color: Colors.black.withValues(alpha: 0.15),
-                ),
-                child: Stack(
-                  children: [
-                    FractionallySizedBox(
-                      widthFactor: 0.8,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(999),
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              blurRadius: 12,
-                            ),
-                          ],
-                        ),
+                    child: Center(
+                      child: Text(
+                        _moods[index],
+                        style: const TextStyle(fontSize: 18),
                       ),
                     ),
-                    const Text('👋'),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                );
+              }),
+            ),
           ),
         ],
       ),
@@ -976,8 +708,8 @@ class _FeatureCard extends StatelessWidget {
     required this.icon,
     required this.gradient,
     required this.shadowColor,
-    required this.height,
     this.onTap,
+    this.enabled = true,
   });
 
   final String title;
@@ -985,117 +717,91 @@ class _FeatureCard extends StatelessWidget {
   final IconData icon;
   final List<Color> gradient;
   final Color shadowColor;
-  final double height;
   final VoidCallback? onTap;
+  final bool enabled;
+  static const _cardRadius = 16.0;
+  static const _cardPadding = 14.0;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SizedBox(
-      height: height,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(28),
-          child: Ink(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: gradient,
-              ),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: shadowColor.withValues(alpha: 0.25),
-                  blurRadius: 25,
-                  offset: const Offset(0, 12),
-                ),
-              ],
+    final titleSize = title.contains('\n') ? 18.0 : 17.0;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(_cardRadius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        customBorder: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_cardRadius),
+        ),
+        child: Ink(
+          padding: const EdgeInsets.all(_cardPadding),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_cardRadius),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: gradient,
             ),
-            child: Stack(
-              children: [
-                // Decorative blur circles
-                Positioned(
-                  right: -32,
-                  top: height > 200 ? 100 : 30,
-                  child: Container(
-                    width: 128,
-                    height: 128,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: shadowColor.withValues(alpha: enabled ? 0.25 : 0.15),
+                blurRadius: 25,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icon container
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.2),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 1.5,
                   ),
                 ),
-                if (height > 200)
-                  Positioned(
-                    right: -32,
-                    top: -32,
-                    child: Container(
-                      width: 128,
-                      height: 128,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Icon container
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.2),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Icon(icon, color: Colors.white, size: 24),
-                    ),
-                    const Spacer(),
-                    Text(
-                      title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        height: 1.15,
-                        letterSpacing: -0.5,
-                        fontSize: height > 200 ? 20 : 18,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontWeight: FontWeight.w500,
-                        height: 1.3,
-                        fontSize: 13,
-                      ),
+                child: Icon(icon, color: Colors.white, size: 20),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                  letterSpacing: -0.5,
+                  fontSize: titleSize,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         ),
       ),

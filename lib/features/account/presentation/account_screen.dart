@@ -300,7 +300,7 @@ class _AccountScreenState extends State<AccountScreen> {
     await _scheduleRepository.save(result);
     await NotificationService.rescheduleHydrationReminders(schedule: result);
     if (!mounted) return;
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _scheduleFuture = Future.value(result);
     });
     ScaffoldMessenger.of(
@@ -419,7 +419,7 @@ class _AccountScreenState extends State<AccountScreen> {
     if (result == null) return;
     final savedToCloud = await _currencyRepository.save(result);
     if (!mounted) return;
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _currencyFuture = Future.value(result);
     });
     ScaffoldMessenger.of(context).showSnackBar(

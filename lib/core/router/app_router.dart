@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import '../ui/ui_refresh_bus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:office_buddy/core/router/app_routes.dart';
 import '../../core/breaks/step_activity_controller.dart';
 import '../../core/ui/ob_bottom_bar.dart';
+import '../../core/ui/ui_refresh_bus.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/auth/presentation/google_login_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
@@ -15,8 +15,6 @@ import '../../features/stress_relief/presentation/stress_relief_screen.dart';
 import '../../features/breaks/presentation/break_screen.dart';
 import '../../features/posture/presentation/posture_screen.dart';
 import '../../features/eyes/presentation/eye_dryness_screen.dart';
-import '../../features/history/presentation/history_screen.dart';
-import '../../features/sleep/presentation/sleep_screen.dart';
 import '../../features/exercises/presentation/exercises_screen.dart';
 import '../../core/exercises/exercise.dart';
 import '../../features/exercises/presentation/exercise_detail_screen.dart';
@@ -175,10 +173,8 @@ class MainScaffold extends ConsumerStatefulWidget {
 class _MainScaffoldState extends ConsumerState<MainScaffold> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
+  static const List<Widget> _screens = <Widget>[
     HomeScreen(),
-    HistoryScreen(),
-    SleepScreen(),
     ExercisesScreen(),
   ];
 
@@ -191,7 +187,10 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       bottomNavigationBar: ObBottomBar(
         currentIndex: _currentIndex,
         onSelect: (i) {
-          UiRefreshBus.instance.update(this, () => _currentIndex = i.clamp(0, 3));
+          UiRefreshBus.instance.update(
+            this,
+            () => _currentIndex = i.clamp(0, _screens.length - 1),
+          );
         },
       ),
     );
