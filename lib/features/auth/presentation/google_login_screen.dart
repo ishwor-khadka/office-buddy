@@ -1,9 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
+import '../../../core/notifications/fcm_token_service.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/settings/office_schedule_repository.dart';
 import '../../../core/ui/ob_background.dart';
@@ -46,7 +48,7 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() => _loading = true);
+    UiRefreshBus.instance.update(this, () => _loading = true);
     try {
       await _googleSignInInit;
 
@@ -68,6 +70,7 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
 
       final credential = GoogleAuthProvider.credential(idToken: idToken);
       await auth.signInWithCredential(credential);
+      await FcmTokenService.registerCurrentUserToken();
 
       if (!mounted) return;
       final hasSavedSchedule = await _officeScheduleRepository
@@ -97,7 +100,7 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Google sign-in failed')));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) UiRefreshBus.instance.update(this, () => _loading = false);
     }
   }
 

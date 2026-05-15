@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 
 import '../../../core/finance/finance_repository.dart';
 import '../../../core/settings/currency_preference.dart';
@@ -123,7 +124,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
                                       label: 'Borrowed (You owe)',
                                       selected: isBorrowed,
                                       onTap: () =>
-                                          setState(() => _selectedTab = 0),
+                                          UiRefreshBus.instance.update(this, () => _selectedTab = 0),
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -132,7 +133,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
                                       label: 'Lent (They owe)',
                                       selected: !isBorrowed,
                                       onTap: () =>
-                                          setState(() => _selectedTab = 1),
+                                          UiRefreshBus.instance.update(this, () => _selectedTab = 1),
                                     ),
                                   ),
                                 ],
@@ -179,7 +180,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
                                   const SizedBox(height: 2),
                                   TextField(
                                     controller: _nameController,
-                                    onChanged: (_) => setState(() {}),
+                                    onChanged: (_) => UiRefreshBus.instance.update(this, () {}),
                                     style: theme.textTheme.titleLarge?.copyWith(
                                       color: const Color(0xFF1C2233),
                                       fontWeight: FontWeight.w500,
@@ -248,7 +249,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
                               onPressed: _saving
                                   ? null
                                   : () async {
-                                      setState(() => _saving = true);
+                                      UiRefreshBus.instance.update(this, () => _saving = true);
                                       try {
                                         await _repository.addBorrowLend(
                                           name: _nameController.text,
@@ -259,7 +260,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
                                         navigator.pop(true);
                                       } finally {
                                         if (mounted) {
-                                          setState(() => _saving = false);
+                                          UiRefreshBus.instance.update(this, () => _saving = false);
                                         }
                                       }
                                     },

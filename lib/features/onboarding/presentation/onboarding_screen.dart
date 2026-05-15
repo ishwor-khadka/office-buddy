@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +8,7 @@ import '../../../core/settings/currency_preference.dart';
 import '../../../core/settings/currency_preference_repository.dart';
 import '../../../core/settings/office_schedule.dart';
 import '../../../core/settings/office_schedule_repository.dart';
+import '../../../core/notifications/notification_service.dart';
 import '../../../core/ui/ob_background.dart';
 import '../../../core/ui/ob_glass.dart';
 import '../../../core/ui/ob_tokens.dart';
@@ -42,7 +44,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final schedule = await scheduleFuture;
     final currency = await currencyFuture;
     if (!mounted) return;
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _workStartMinutes = schedule.workStartMinutes;
       _workEndMinutes = schedule.workEndMinutes;
       _offDays
@@ -71,7 +73,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
     if (picked == null) return;
     final minutes = picked.hour * 60 + picked.minute;
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       if (start) {
         _workStartMinutes = minutes;
       } else {
@@ -81,7 +83,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _toggleOffDay(int weekday) {
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       if (!_offDays.add(weekday)) {
         _offDays.remove(weekday);
       }
@@ -188,18 +190,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
 
     if (result == null || !mounted) return;
-    setState(() => _selectedCurrency = result);
+    UiRefreshBus.instance.update(this, () => _selectedCurrency = result);
   }
 
   Future<void> _finish() async {
-    setState(() => _saving = true);
+    UiRefreshBus.instance.update(this, () => _saving = true);
+    final schedule = OfficeSchedule(
+      workStartMinutes: _workStartMinutes,
+      workEndMinutes: _workEndMinutes,
+      offDays: _offDays.toList()..sort(),
+    );
     try {
-      final scheduleSynced = await _repository.save(
-        OfficeSchedule(
-          workStartMinutes: _workStartMinutes,
-          workEndMinutes: _workEndMinutes,
-          offDays: _offDays.toList()..sort(),
-        ),
+      final scheduleSynced = await _repository.save(schedule);
+      await NotificationService.rescheduleHydrationReminders(
+        schedule: schedule,
       );
       final currencySynced = await _currencyRepository.save(_selectedCurrency);
       final synced = scheduleSynced && currencySynced;
@@ -222,7 +226,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         SnackBar(content: Text('Failed to save office timing: $error')),
       );
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) UiRefreshBus.instance.update(this, () => _saving = false);
     }
   }
 

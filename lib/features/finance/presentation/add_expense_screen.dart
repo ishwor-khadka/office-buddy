@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 
 import '../../../core/finance/finance_repository.dart';
 import '../../../core/settings/currency_preference.dart';
@@ -138,7 +139,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                   TextField(
                                     controller: _amountController,
                                     keyboardType: TextInputType.number,
-                                    onChanged: (_) => setState(() {}),
+                                    onChanged: (_) => UiRefreshBus.instance.update(this, () {}),
                                     style: theme.textTheme.displaySmall
                                         ?.copyWith(
                                           color: const Color(0xFF8B8B8B),
@@ -188,7 +189,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                       category: category,
                                       selected: _selectedCategory == category,
                                       onTap: () {
-                                        setState(() {
+                                        UiRefreshBus.instance.update(this, () {
                                           _selectedCategory = category;
                                         });
                                       },
@@ -264,7 +265,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                         lastDate: DateTime(2100),
                                       );
                                       if (picked == null || !mounted) return;
-                                      setState(() => _selectedDate = picked);
+                                      UiRefreshBus.instance.update(this, () => _selectedDate = picked);
                                     },
                               borderRadius: BorderRadius.circular(16),
                               child: Container(
@@ -306,7 +307,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                               child: ElevatedButton(
                                 onPressed: canSave
                                     ? () async {
-                                        setState(() => _saving = true);
+                                        UiRefreshBus.instance.update(this, () => _saving = true);
                                         final messenger =
                                             ScaffoldMessenger.of(context);
                                         try {
@@ -339,7 +340,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                           );
                                         } finally {
                                           if (mounted) {
-                                            setState(() => _saving = false);
+                                            UiRefreshBus.instance.update(this, () => _saving = false);
                                           }
                                         }
                                       }

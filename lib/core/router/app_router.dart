@@ -1,7 +1,8 @@
+import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import '../ui/ui_refresh_bus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:office_buddy/core/router/app_routes.dart';
@@ -122,23 +123,12 @@ GoRouter _createAppRouter() {
             args:
                 args ??
                 const FinancePersonDetailsArgs(
-                  name: 'Rajesh',
-                  amount: '500',
+                  name: '',
+                  amount: '',
                   isOwed: true,
-                  color: Color(0xFF5EB7F6),
-                  initials: '👱',
-                  transactions: [
-                    FinanceTransaction(
-                      title: 'Dinner at restaurant',
-                      dateLabel: 'Apr 5, 2026',
-                      amount: '300',
-                    ),
-                    FinanceTransaction(
-                      title: 'Movie tickets',
-                      dateLabel: 'Apr 3, 2026',
-                      amount: '200',
-                    ),
-                  ],
+                  color: Colors.white,
+                  initials: '',
+                  transactions: [],
                 ),
           );
         },
@@ -201,7 +191,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       bottomNavigationBar: ObBottomBar(
         currentIndex: _currentIndex,
         onSelect: (i) {
-          setState(() => _currentIndex = i.clamp(0, 3));
+          UiRefreshBus.instance.update(this, () => _currentIndex = i.clamp(0, 3));
         },
       ),
     );

@@ -1,8 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:math';
+
+import '../../../core/ui/ui_refresh_bus.dart';
 
 import '../../../core/hydration/hydration_repository.dart';
+import '../../../core/notifications/notification_service.dart';
 import '../../../core/settings/office_schedule.dart';
 import '../../../core/settings/office_schedule_repository.dart';
 import '../../../core/ui/ob_background.dart';
@@ -35,7 +38,7 @@ class _HydrationScreenState extends State<HydrationScreen> {
     _future = _loadData();
     _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) {
-        setState(() => _future = _loadData());
+        UiRefreshBus.instance.update(this, () => _future = _loadData());
       }
     });
   }
@@ -170,6 +173,29 @@ class _HydrationScreenState extends State<HydrationScreen> {
     return '$h:$m $suffix';
   }
 
+  Future<void> _triggerTestNotification() async {
+    final random = Random(DateTime.now().millisecondsSinceEpoch);
+    final title =
+        NotificationService.hydrationTitles[random.nextInt(
+          NotificationService.hydrationTitles.length,
+        )];
+    final body =
+        NotificationService.hydrationBodies[random.nextInt(
+          NotificationService.hydrationBodies.length,
+        )];
+    final actionLabel =
+        NotificationService.hydrationActionLabels[random.nextInt(
+          NotificationService.hydrationActionLabels.length,
+        )];
+
+    await NotificationService.showHydrationReminder(
+      id: 990000 + random.nextInt(999),
+      title: title,
+      body: '$body (+250 mL)',
+      actionLabel: actionLabel,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -182,7 +208,7 @@ class _HydrationScreenState extends State<HydrationScreen> {
               final data = snapshot.data;
               return RefreshIndicator(
                 onRefresh: () async {
-                  setState(() => _future = _loadData());
+                  UiRefreshBus.instance.update(this, () => _future = _loadData());
                   await _future;
                 },
                 child: ListView(
@@ -343,6 +369,34 @@ class _HydrationScreenState extends State<HydrationScreen> {
                                   .toList(growable: false),
                             ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          await _triggerTestNotification();
+                          if (!mounted) return;
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Hydration test notification sent.',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.notifications_active_rounded),
+                        label: const Text('Test Hydration Notification'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: const Color(0xFF0284C7),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
                       ),
                     ),
                   ],

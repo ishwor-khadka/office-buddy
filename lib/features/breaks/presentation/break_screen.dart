@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:pedometer/pedometer.dart';
@@ -50,7 +51,10 @@ class _BreakScreenState extends State<BreakScreen> {
   Future<void> _loadSettings() async {
     final settings = await SettingsRepository().load();
     if (!mounted) return;
-    setState(() => _requiredSteps = settings.requiredSteps);
+    UiRefreshBus.instance.update(
+      this,
+      () => _requiredSteps = settings.requiredSteps,
+    );
   }
 
   Future<void> _initSteps() async {
@@ -67,7 +71,7 @@ class _BreakScreenState extends State<BreakScreen> {
           if (delta < 0) return;
 
           if (mounted) {
-            setState(() => _currentSteps = delta);
+            UiRefreshBus.instance.update(this, () => _currentSteps = delta);
           }
 
           if (delta >= _requiredSteps) {
@@ -76,12 +80,20 @@ class _BreakScreenState extends State<BreakScreen> {
         },
         onError: (e) {
           if (mounted) {
-            setState(() => _stepError = 'Step counter not available: $e');
+            UiRefreshBus.instance.update(
+              this,
+              () => _stepError = 'Step counter not available: $e',
+            );
           }
         },
       );
     } catch (e) {
-      if (mounted) setState(() => _stepError = 'Step counter init failed: $e');
+      if (mounted) {
+        UiRefreshBus.instance.update(
+          this,
+          () => _stepError = 'Step counter init failed: $e',
+        );
+      }
     }
   }
 
@@ -122,7 +134,7 @@ class _BreakScreenState extends State<BreakScreen> {
   }
 
   Future<void> _snooze() async {
-    setState(() => _isSnoozed = true);
+    UiRefreshBus.instance.update(this, () => _isSnoozed = true);
     _snoozeUsed = true;
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final breakState = BreakStateRepository();
@@ -143,6 +155,7 @@ class _BreakScreenState extends State<BreakScreen> {
     await breakState.setConsecutiveIgnored(0);
     await breakState.setEscalationLevel(0);
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Break snoozed for 5 minutes.')),
     );
@@ -189,8 +202,8 @@ class _BreakScreenState extends State<BreakScreen> {
                       'Walk $_requiredSteps steps to dismiss.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onErrorContainer.withOpacity(
-                          0.85,
+                        color: theme.colorScheme.onErrorContainer.withValues(
+                          alpha: 0.85,
                         ),
                       ),
                     ).animate().fade(delay: 200.ms),
@@ -200,8 +213,8 @@ class _BreakScreenState extends State<BreakScreen> {
                         _stepError!,
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onErrorContainer.withOpacity(
-                            0.75,
+                          color: theme.colorScheme.onErrorContainer.withValues(
+                            alpha: 0.75,
                           ),
                         ),
                       ),
@@ -210,8 +223,8 @@ class _BreakScreenState extends State<BreakScreen> {
                         'Tip: step counting may not work on an emulator. Try on a physical device.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onErrorContainer.withOpacity(
-                            0.7,
+                          color: theme.colorScheme.onErrorContainer.withValues(
+                            alpha: 0.7,
                           ),
                         ),
                       ),
@@ -242,10 +255,10 @@ class _BreakScreenState extends State<BreakScreen> {
                               ),
                             ),
                             Text(
-                              ' / ${_requiredSteps} steps',
+                              ' / $_requiredSteps steps',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onErrorContainer
-                                    .withOpacity(0.75),
+                                    .withValues(alpha: 0.75),
                               ),
                             ),
                           ],
@@ -262,7 +275,9 @@ class _BreakScreenState extends State<BreakScreen> {
                               _snoozeUsed ? 'Snoozed' : 'Snooze (5m)',
                               style: TextStyle(
                                 color: theme.colorScheme.onErrorContainer
-                                    .withOpacity(_snoozeUsed ? 0.35 : 0.65),
+                                    .withValues(
+                                      alpha: _snoozeUsed ? 0.35 : 0.65,
+                                    ),
                               ),
                             ),
                           ),
@@ -277,7 +292,8 @@ class _BreakScreenState extends State<BreakScreen> {
                             onPressed: _stepError == null
                                 ? null
                                 : () {
-                                    setState(
+                                    UiRefreshBus.instance.update(
+                                      this,
                                       () => _currentSteps = _requiredSteps,
                                     );
                                     _completeBreak(

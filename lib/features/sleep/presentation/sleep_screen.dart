@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/data/database_helper.dart';
@@ -34,7 +35,7 @@ class _SleepScreenState extends State<SleepScreen> {
     final totalSec = await DatabaseHelper.instance.sumSleepSecondsSince(sinceMillis: since);
     final count = await DatabaseHelper.instance.countSleepLogsSince(sinceMillis: since);
     if (!mounted) return;
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _activeStartMs = start;
       _weekTotalMinutes = (totalSec / 60).round();
       _weekSessions = count;
@@ -51,7 +52,7 @@ class _SleepScreenState extends State<SleepScreen> {
       data: {'start_ms': nowMs},
     );
     if (!mounted) return;
-    setState(() => _activeStartMs = nowMs);
+    UiRefreshBus.instance.update(this, () => _activeStartMs = nowMs);
   }
 
   Future<void> _stopSleep() async {
@@ -73,7 +74,7 @@ class _SleepScreenState extends State<SleepScreen> {
       data: {'start_ms': startMs, 'end_ms': endMs, 'duration_seconds': durSec},
     );
     if (!mounted) return;
-    setState(() => _activeStartMs = null);
+    UiRefreshBus.instance.update(this, () => _activeStartMs = null);
     await _load();
   }
 

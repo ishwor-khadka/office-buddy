@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
+import '../../../core/notifications/fcm_token_service.dart';
+import '../../../core/notifications/notification_service.dart';
 import '../../../core/settings/currency_preference.dart';
 import '../../../core/settings/currency_preference_repository.dart';
 import '../../../core/settings/office_schedule.dart';
@@ -40,7 +43,7 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _login() async {
-    setState(() => _loading = true);
+    UiRefreshBus.instance.update(this, () => _loading = true);
     try {
       final auth = FirebaseBootstrap.authOrNull;
       if (auth == null) {
@@ -66,12 +69,12 @@ class _AccountScreenState extends State<AccountScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Login failed')));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) UiRefreshBus.instance.update(this, () => _loading = false);
     }
   }
 
   Future<void> _signup() async {
-    setState(() => _loading = true);
+    UiRefreshBus.instance.update(this, () => _loading = true);
     try {
       final auth = FirebaseBootstrap.authOrNull;
       if (auth == null) {
@@ -105,18 +108,19 @@ class _AccountScreenState extends State<AccountScreen> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Signup failed')));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) UiRefreshBus.instance.update(this, () => _loading = false);
     }
   }
 
   Future<void> _logout() async {
-    setState(() => _loading = true);
+    UiRefreshBus.instance.update(this, () => _loading = true);
     try {
       final auth = FirebaseBootstrap.authOrNull;
       if (auth == null) return;
+      await FcmTokenService.deleteCurrentUserToken();
       await auth.signOut();
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) UiRefreshBus.instance.update(this, () => _loading = false);
     }
   }
 
@@ -277,8 +281,9 @@ class _AccountScreenState extends State<AccountScreen> {
 
     if (result == null) return;
     await _scheduleRepository.save(result);
+    await NotificationService.rescheduleHydrationReminders(schedule: result);
     if (!mounted) return;
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _scheduleFuture = Future.value(result);
     });
     ScaffoldMessenger.of(
@@ -395,7 +400,7 @@ class _AccountScreenState extends State<AccountScreen> {
     if (result == null) return;
     final savedToCloud = await _currencyRepository.save(result);
     if (!mounted) return;
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _currencyFuture = Future.value(result);
     });
     ScaffoldMessenger.of(context).showSnackBar(

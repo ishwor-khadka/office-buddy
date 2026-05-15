@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:office_buddy/core/router/app_routes.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/breaks/break_background.dart';
+import 'core/settings/office_schedule_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,11 +14,16 @@ Future<void> main() async {
   await NotificationService.initialize(
     onTapNotification: (payload) {
       if (payload == null || payload.isEmpty) return;
-      appRouter.go(payload);
+      appRouter.go(AppRoutes.homeScreen);
+      appRouter.push(payload);
     },
   );
   await BreakBackground.initialize();
   await BreakBackground.registerPeriodicTick();
+  final officeSchedule = await OfficeScheduleRepository().load();
+  await NotificationService.rescheduleHydrationReminders(
+    schedule: officeSchedule,
+  );
   runApp(const ProviderScope(child: OfficeHealthApp()));
 }
 

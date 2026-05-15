@@ -1,10 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 import '../hydration/hydration_repository.dart';
+import '../router/app_routes.dart';
+import '../settings/office_schedule.dart';
 
 const String hydrationActionId = 'hydration_done';
-const String hydrationPayload = 'hydration_reminder';
+const String hydrationPayload = AppRoutes.hydrationScreen;
 
 // Must be top-level for background isolates.
 @pragma('vm:entry-point')
@@ -25,6 +30,7 @@ class NotificationService {
   static const String hydrationChannelName = 'Hydration reminders';
   static const String hydrationChannelDescription =
       'Reminders to drink 250 ml of water during office hours.';
+  static const int _hydrationBaseId = 700000;
 
   static const List<String> hydrationTitles = <String>[
     'Desk Hydration Check',
@@ -35,7 +41,7 @@ class NotificationService {
     'Take a Sip 💧',
     'Your Body Needs Water',
     'Quick Water Break',
-    'Don’t Forget to Hydrate',
+    "Don’t Forget to Hydrate",
     'Sip Sip Time',
   ];
 
@@ -58,6 +64,7 @@ class NotificationService {
   static Future<void> initialize({
     required void Function(String? payload) onTapNotification,
   }) async {
+    await _configureLocalTimeZone();
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidInit);
 
@@ -83,6 +90,8 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
+    await android?.requestNotificationsPermission();
+    await android?.requestExactAlarmsPermission();
     await android?.createNotificationChannel(channel);
 
     const hydrationChannel = AndroidNotificationChannel(
@@ -92,6 +101,16 @@ class NotificationService {
       importance: Importance.max,
     );
     await android?.createNotificationChannel(hydrationChannel);
+  }
+
+  static Future<void> _configureLocalTimeZone() async {
+    tz.initializeTimeZones();
+    try {
+      final name = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(name));
+    } catch (error) {
+      debugPrint('Failed to configure local timezone: $error');
+    }
   }
 
   static Future<void> showBreakReminder({
@@ -133,13 +152,14 @@ class NotificationService {
       channelDescription: hydrationChannelDescription,
       importance: Importance.max,
       priority: Priority.high,
+      autoCancel: true,
       category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
       actions: <AndroidNotificationAction>[
         AndroidNotificationAction(
           hydrationActionId,
           actionLabel,
-          showsUserInterface: false,
+          showsUserInterface: true,
           cancelNotification: true,
         ),
       ],
@@ -154,13 +174,155 @@ class NotificationService {
     );
   }
 
+  static Future<void> rescheduleHydrationReminders({
+    required OfficeSchedule schedule,
+    int daysAhead = 7,
+  }) async {
+    await _cancelHydrationSchedules();
+    if (daysAhead < 1) return;
+
+    final now = DateTime.now();
+    for (var dayOffset = 0; dayOffset < daysAhead; dayOffset++) {
+      final date = now.add(Duration(days: dayOffset));
+      if (schedule.offDays.contains(date.weekday)) {
+        continue;
+      }
+
+      final dayStart = DateTime(
+        date.year,
+        date.month,
+        date.day,
+      );
+      final firstAt = dayStart.add(
+        Duration(minutes: schedule.workStartMinutes + 30),
+      );
+      final lastAt = dayStart.add(
+        Duration(minutes: schedule.workEndMinutes - 30),
+      );
+      if (!firstAt.isBefore(lastAt)) {
+        continue;
+      }
+
+      var slot = 0;
+      var at = firstAt;
+      while (slot < 6 && !at.isAfter(lastAt)) {
+        if (at.isAfter(now)) {
+          await _scheduleHydrationAt(
+            id: _hydrationIdFor(date, slot),
+            at: at,
+          );
+        }
+        slot++;
+        at = at.add(const Duration(minutes: 75));
+      }
+    }
+  }
+
+  static int _hydrationIdFor(DateTime date, int slot) {
+    final yy = date.year % 100;
+    final dayOfYear = _dayOfYear(date);
+    return _hydrationBaseId + yy * 4000 + dayOfYear * 10 + slot;
+  }
+
+  static int _dayOfYear(DateTime d) {
+    final jan1 = DateTime(d.year, 1, 1);
+    return d.difference(jan1).inDays + 1;
+  }
+
+  static Future<void> _scheduleHydrationAt({
+    required int id,
+    required DateTime at,
+  }) async {
+    final seed = at.millisecondsSinceEpoch + id;
+    final title =
+        hydrationTitles[seed.abs() % hydrationTitles.length];
+    final body = hydrationBodies[(seed ~/ 7).abs() % hydrationBodies.length];
+    final actionLabel =
+        hydrationActionLabels[(seed ~/ 13).abs() % hydrationActionLabels.length];
+
+    final android = AndroidNotificationDetails(
+      hydrationChannelId,
+      hydrationChannelName,
+      channelDescription: hydrationChannelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      autoCancel: true,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          hydrationActionId,
+          actionLabel,
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: '$body (+250 mL)',
+        scheduledDate: tz.TZDateTime.from(at, tz.local),
+        notificationDetails: NotificationDetails(android: android),
+        payload: hydrationPayload,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (error) {
+      debugPrint('Exact schedule failed, falling back to inexact: $error');
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: '$body (+250 mL)',
+        scheduledDate: tz.TZDateTime.from(at, tz.local),
+        notificationDetails: NotificationDetails(android: android),
+        payload: hydrationPayload,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
+  }
+
+  static Future<void> _cancelHydrationSchedules() async {
+    final pending = await _plugin.pendingNotificationRequests();
+    for (final req in pending) {
+      if (req.payload == hydrationPayload) {
+        await _plugin.cancel(id: req.id);
+      }
+    }
+  }
+
   static Future<void> handleNotificationResponse(
     NotificationResponse response,
   ) async {
-    if (response.actionId != hydrationActionId) return;
+    debugPrint(
+      'handleNotificationResponse: id=${response.id}, action=${response.actionId}, payload=${response.payload}',
+    );
+    if (response.payload != hydrationPayload &&
+        response.actionId != hydrationActionId) {
+      return;
+    }
+
+    final tappedNotificationId = response.id;
+    final fallbackPendingId = await _hydrationRepository
+        .getPendingNotificationId();
+    final idToCancel = tappedNotificationId ?? fallbackPendingId;
+    if (idToCancel != null) {
+      await _plugin.cancel(id: idToCancel);
+    }
+    // Device-specific fallback: some OEMs ignore targeted cancel for action taps.
+    await _plugin.cancelAll();
+
+    if (response.actionId != hydrationActionId) {
+      return;
+    }
+
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     await _hydrationRepository.addHydrationEntry(timestampMillis: nowMs);
     await _hydrationRepository.clearPendingPrompt();
-    debugPrint('Hydration acknowledged at $nowMs');
+    if (idToCancel != null) {
+      await _plugin.cancel(id: idToCancel);
+    }
+    await _plugin.cancelAll();
   }
 }

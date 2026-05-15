@@ -133,7 +133,6 @@ class _StickFigurePainter extends CustomPainter {
 
     // Joints distances.
     final shoulderW = 60 * scale;
-    final torsoH = 85 * scale;
     final upperArm = 65 * scale;
     final forearm = 55 * scale;
     final upperLeg = 70 * scale;
@@ -174,9 +173,16 @@ class _StickFigurePainter extends CustomPainter {
 
     final leftElbow = seg(leftShoulder, upperArm, math.pi / 2 + la);
     final rightElbow = seg(rightShoulder, upperArm, math.pi / 2 + ra);
-    final leftWrist = seg(leftElbow, forearm, math.pi / 2 + la + leftForearmAngle);
-    final rightWrist =
-        seg(rightElbow, forearm, math.pi / 2 + ra + rightForearmAngle);
+    final leftWrist = seg(
+      leftElbow,
+      forearm,
+      math.pi / 2 + la + leftForearmAngle,
+    );
+    final rightWrist = seg(
+      rightElbow,
+      forearm,
+      math.pi / 2 + ra + rightForearmAngle,
+    );
 
     // Draw glow accents for the focused body part.
     void glowLine(Offset a, Offset b) {
@@ -224,4 +230,3 @@ class _StickFigurePainter extends CustomPainter {
         oldDelegate.accentB != accentB;
   }
 }
-

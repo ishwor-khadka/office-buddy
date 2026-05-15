@@ -25,7 +25,9 @@ class StepActivityController extends Notifier<bool> {
     final repo = BreakStateRepository();
     try {
       // Some Android versions require runtime permission for step counting.
-      Permission.activityRecognition.request().catchError((_) {});
+      Permission.activityRecognition.request().catchError(
+        (_) => PermissionStatus.denied,
+      );
       _sub = Pedometer.stepCountStream.listen(
         (event) async {
           final steps = event.steps;

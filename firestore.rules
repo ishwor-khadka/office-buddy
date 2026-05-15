@@ -84,6 +84,20 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow update, delete: if false;
       }
+
+      match /device_tokens/{tokenId} {
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly([
+            'token',
+            'platform',
+            'updatedAtMillis'
+          ])
+          && isNonEmptyString(request.resource.data.token, 1024)
+          && isNonEmptyString(request.resource.data.platform, 32)
+          && isMillis(request.resource.data.updatedAtMillis);
+        allow read: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
     }
   }
 }

@@ -1,6 +1,7 @@
+import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -37,7 +38,7 @@ class _FinanceTrackerScreenState extends State<FinanceTrackerScreen> {
   }
 
   Future<void> _refreshSummary() async {
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _summaryFuture = _repository.loadSummary();
       _expensesFuture = _repository.loadRecentExpenses();
       _currencyFuture = _currencyRepository.load();

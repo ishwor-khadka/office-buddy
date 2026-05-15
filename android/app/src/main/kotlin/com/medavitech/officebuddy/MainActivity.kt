@@ -1,4 +1,4 @@
-package com.agnepal.office_health_app
+package com.medavitech.officebuddy
 
 import io.flutter.embedding.android.FlutterActivity
 

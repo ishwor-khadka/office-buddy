@@ -1,5 +1,6 @@
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
@@ -43,7 +44,12 @@ class _PostureScreenState extends State<PostureScreen> {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        if (mounted) setState(() => _cameraError = 'No camera available.');
+        if (mounted) {
+          UiRefreshBus.instance.update(
+            this,
+            () => _cameraError = 'No camera available.',
+          );
+        }
         return;
       }
 
@@ -59,9 +65,14 @@ class _PostureScreenState extends State<PostureScreen> {
       );
 
       await _cameraController?.initialize();
-      if (mounted) setState(() {});
+      if (mounted) UiRefreshBus.instance.update(this, () {});
     } catch (e) {
-      if (mounted) setState(() => _cameraError = 'Camera init failed: $e');
+      if (mounted) {
+        UiRefreshBus.instance.update(
+          this,
+          () => _cameraError = 'Camera init failed: $e',
+        );
+      }
     }
   }
 
@@ -72,7 +83,7 @@ class _PostureScreenState extends State<PostureScreen> {
     if (controller == null || detector == null) return;
     if (!controller.value.isInitialized) return;
 
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _isProcessing = true;
       _statusMessage = 'Analyzing posture... Hold still.';
     });
@@ -83,7 +94,7 @@ class _PostureScreenState extends State<PostureScreen> {
       final poses = await detector.processImage(image);
       final pose = poses.isNotEmpty ? poses.first : null;
       if (pose == null) {
-        setState(() {
+        UiRefreshBus.instance.update(this, () {
           _isProcessing = false;
           _statusMessage = 'No pose detected. Try better lighting.';
           _lastPose = null;
@@ -118,7 +129,7 @@ class _PostureScreenState extends State<PostureScreen> {
         },
       );
 
-      setState(() {
+      UiRefreshBus.instance.update(this, () {
         _isProcessing = false;
         _lastPose = pose;
         _lastClassification = classification;
@@ -135,7 +146,7 @@ class _PostureScreenState extends State<PostureScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
+      UiRefreshBus.instance.update(this, () {
         _isProcessing = false;
         _statusMessage = 'Analysis failed. Try again.';
       });
@@ -158,7 +169,10 @@ class _PostureScreenState extends State<PostureScreen> {
       PostureIssueType.lateralTilt => 'Back',
       PostureIssueType.none => 'Neck',
     };
-    final suggestions = all.where((e) => e.bodyPart == bodyPart).take(3).toList();
+    final suggestions = all
+        .where((e) => e.bodyPart == bodyPart)
+        .take(3)
+        .toList();
 
     if (!mounted) return;
     await showModalBottomSheet(
@@ -245,19 +259,21 @@ class _PostureScreenState extends State<PostureScreen> {
           // Scanning Overlay Magic Effect
           if (_isProcessing)
             Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    theme.colorScheme.primary.withOpacity(0.0),
-                    theme.colorScheme.primary.withOpacity(0.2),
-                    theme.colorScheme.primary.withOpacity(0.0),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ),
-              ),
-            ).animate(onPlay: (controller) => controller.repeat()).slideY(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        theme.colorScheme.primary.withValues(alpha: 0.0),
+                        theme.colorScheme.primary.withValues(alpha: 0.2),
+                        theme.colorScheme.primary.withValues(alpha: 0.0),
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                )
+                .animate(onPlay: (controller) => controller.repeat())
+                .slideY(
                   begin: -1,
                   end: 1,
                   duration: 2.seconds,
@@ -272,14 +288,14 @@ class _PostureScreenState extends State<PostureScreen> {
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface.withOpacity(0.85),
+                color: theme.colorScheme.surface.withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
-                  )
+                  ),
                 ],
               ),
               child: Column(
@@ -298,7 +314,8 @@ class _PostureScreenState extends State<PostureScreen> {
                           _lastClassification?.result == PostureResult.good
                               ? LucideIcons.checkCircle2
                               : LucideIcons.alertTriangle,
-                          color: _lastClassification?.result == PostureResult.good
+                          color:
+                              _lastClassification?.result == PostureResult.good
                               ? Colors.greenAccent
                               : theme.colorScheme.error,
                           size: 28,
@@ -342,8 +359,8 @@ class _ExerciseSuggestion extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        color: Colors.white.withOpacity(0.08),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
@@ -355,12 +372,16 @@ class _ExerciseSuggestion extends StatelessWidget {
               children: [
                 Text(
                   exercise.title,
-                  style: theme.textTheme.titleMedium?.copyWith(color: Colors.white),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${exercise.bodyPart} · ${exercise.difficulty} · $mins min',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                  ),
                 ),
               ],
             ),

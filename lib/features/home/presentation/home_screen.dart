@@ -1,5 +1,6 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -69,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (_showMotivation)
                       _MotivationCard(
                             onDismiss: () =>
-                                setState(() => _showMotivation = false),
+                                UiRefreshBus.instance.update(this, () => _showMotivation = false),
                           )
                           .animate()
                           .fade(delay: 80.ms, duration: 320.ms)
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             selectedMood: _selectedMood,
                             onMoodSelected: (mood) {
                               HapticFeedback.lightImpact();
-                              setState(() {
+                              UiRefreshBus.instance.update(this, () {
                                 _selectedMood = mood;
                               });
                               // Auto-dismiss after selection with a short delay
@@ -91,13 +92,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const Duration(milliseconds: 400),
                                 () {
                                   if (mounted) {
-                                    setState(() => _showMoodSelector = false);
+                                    UiRefreshBus.instance.update(this, () => _showMoodSelector = false);
                                   }
                                 },
                               );
                             },
                             onDismiss: () =>
-                                setState(() => _showMoodSelector = false),
+                                UiRefreshBus.instance.update(this, () => _showMoodSelector = false),
                           )
                           .animate()
                           .fade(delay: 140.ms, duration: 320.ms)
