@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:office_buddy/firebase_options.dart';
 
 class FirebaseBootstrap {
   static bool _initialized = false;
@@ -22,7 +23,9 @@ class FirebaseBootstrap {
     if (_initialized) return;
 
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       _initialized = true;
     } on UnsupportedError catch (error) {
       debugPrint('Firebase not configured for this platform: $error');
