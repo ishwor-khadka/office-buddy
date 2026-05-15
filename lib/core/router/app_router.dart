@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/breaks/step_activity_controller.dart';
+import '../../core/ui/ob_bottom_bar.dart';
+import '../../features/exercises/presentation/exercises_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/stress_relief/presentation/stress_relief_screen.dart';
@@ -86,8 +90,20 @@ final appRouter = GoRouter(
   ],
 );
 
-class MainScaffold extends StatelessWidget {
+class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
+
+  @override
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
+}
+
+class _MainScaffoldState extends ConsumerState<MainScaffold> {
+  int _currentIndex = 0;
+
+  static const List<Widget> _screens = <Widget>[
+    HomeScreen(),
+    ExercisesScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +114,7 @@ class MainScaffold extends StatelessWidget {
       bottomNavigationBar: ObBottomBar(
         currentIndex: _currentIndex,
         onSelect: (i) {
-          setState(() => _currentIndex = i.clamp(0, 3));
+          setState(() => _currentIndex = i.clamp(0, 1));
         },
       ),
     );
