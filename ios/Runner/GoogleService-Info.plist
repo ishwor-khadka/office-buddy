@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.agnepal.officeHealthApp</string>
+	<string>com.medavitech.officebuddy</string>
 	<key>PROJECT_ID</key>
 	<string>office-buddy-b4948</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:726861644713:ios:287fe3bff58214d32c7ab8</string>
+	<string>1:726861644713:ios:8eae19338cb857322c7ab8</string>
 </dict>
 </plist>

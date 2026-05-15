@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "726861644713",
+    "project_id": "office-buddy-b4948",
+    "storage_bucket": "office-buddy-b4948.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:726861644713:android:072359b29d6bd9ba2c7ab8",
+        "android_client_info": {
+          "package_name": "com.medavitech.officebuddy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCd2Kwif_zSpR78zRHpB2gGAmhS6Hel2Ik"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
