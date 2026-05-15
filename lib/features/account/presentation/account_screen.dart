@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/notifications/fcm_token_service.dart';
 import '../../../core/notifications/notification_service.dart';
+import '../../../core/permissions/post_login_permission_service.dart';
 import '../../../core/settings/currency_preference.dart';
 import '../../../core/settings/currency_preference_repository.dart';
 import '../../../core/settings/office_schedule.dart';
@@ -53,6 +56,8 @@ class _AccountScreenState extends State<AccountScreen> {
         email: _email.text.trim(),
         password: _password.text,
       );
+      await _requestPostLoginPermissions();
+      unawaited(FcmTokenService.registerCurrentUserToken());
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -84,6 +89,8 @@ class _AccountScreenState extends State<AccountScreen> {
         email: _email.text.trim(),
         password: _password.text,
       );
+      await _requestPostLoginPermissions();
+      unawaited(FcmTokenService.registerCurrentUserToken());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -121,6 +128,16 @@ class _AccountScreenState extends State<AccountScreen> {
       await auth.signOut();
     } finally {
       if (mounted) UiRefreshBus.instance.update(this, () => _loading = false);
+    }
+  }
+
+  Future<void> _requestPostLoginPermissions() async {
+    try {
+      await PostLoginPermissionService.requestForCurrentUser().timeout(
+        const Duration(seconds: 45),
+      );
+    } catch (error) {
+      debugPrint('Post-login permission request did not complete: $error');
     }
   }
 
@@ -283,7 +300,7 @@ class _AccountScreenState extends State<AccountScreen> {
     await _scheduleRepository.save(result);
     await NotificationService.rescheduleHydrationReminders(schedule: result);
     if (!mounted) return;
-    UiRefreshBus.instance.update(this, () {
+    setState(() {
       _scheduleFuture = Future.value(result);
     });
     ScaffoldMessenger.of(
@@ -302,13 +319,15 @@ class _AccountScreenState extends State<AccountScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final filteredOptions = supportedCurrencyPreferences.where((option) {
-              if (query.trim().isEmpty) return true;
-              final q = query.toLowerCase();
-              return option.name.toLowerCase().contains(q) ||
-                  option.code.toLowerCase().contains(q) ||
-                  option.symbol.toLowerCase().contains(q);
-            }).toList(growable: false);
+            final filteredOptions = supportedCurrencyPreferences
+                .where((option) {
+                  if (query.trim().isEmpty) return true;
+                  final q = query.toLowerCase();
+                  return option.name.toLowerCase().contains(q) ||
+                      option.code.toLowerCase().contains(q) ||
+                      option.symbol.toLowerCase().contains(q);
+                })
+                .toList(growable: false);
 
             return SafeArea(
               child: Padding(
@@ -400,7 +419,7 @@ class _AccountScreenState extends State<AccountScreen> {
     if (result == null) return;
     final savedToCloud = await _currencyRepository.save(result);
     if (!mounted) return;
-    UiRefreshBus.instance.update(this, () {
+    setState(() {
       _currencyFuture = Future.value(result);
     });
     ScaffoldMessenger.of(context).showSnackBar(

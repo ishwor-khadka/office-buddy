@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pedometer/pedometer.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'break_state_repository.dart';
 
@@ -24,10 +23,6 @@ class StepActivityController extends Notifier<bool> {
     if (_sub != null) return;
     final repo = BreakStateRepository();
     try {
-      // Some Android versions require runtime permission for step counting.
-      Permission.activityRecognition.request().catchError(
-        (_) => PermissionStatus.denied,
-      );
       _sub = Pedometer.stepCountStream.listen(
         (event) async {
           final steps = event.steps;

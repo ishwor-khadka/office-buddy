@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:pedometer/pedometer.dart';
 import 'dart:async';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/breaks/break_state_repository.dart';
 import '../../../core/data/database_helper.dart';
@@ -35,17 +34,7 @@ class _BreakScreenState extends State<BreakScreen> {
     super.initState();
     _requiredSteps = widget.requiredSteps;
     _loadSettings();
-    _ensureActivityPermission();
     _initSteps();
-  }
-
-  Future<void> _ensureActivityPermission() async {
-    try {
-      final status = await Permission.activityRecognition.status;
-      if (status.isDenied || status.isRestricted) {
-        await Permission.activityRecognition.request();
-      }
-    } catch (_) {}
   }
 
   Future<void> _loadSettings() async {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,7 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _workStartMinutes = 9 * 60;
   int _workEndMinutes = 18 * 60;
   final Set<int> _offDays = <int>{DateTime.saturday, DateTime.sunday};
-  CurrencyPreference _selectedCurrency = CurrencyPreference.defaultPreference;
+  CurrencyPreference? _selectedCurrency;
   bool _saving = false;
 
   @override
@@ -40,17 +39,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _loadExisting() async {
     final scheduleFuture = _repository.load();
-    final currencyFuture = _currencyRepository.load();
+    final currencyFuture = _currencyRepository.loadLocal();
     final schedule = await scheduleFuture;
     final currency = await currencyFuture;
     if (!mounted) return;
-    UiRefreshBus.instance.update(this, () {
+    setState(() {
       _workStartMinutes = schedule.workStartMinutes;
       _workEndMinutes = schedule.workEndMinutes;
       _offDays
         ..clear()
         ..addAll(schedule.offDays);
-      _selectedCurrency = currencyPreferenceForCode(currency.code);
+      _selectedCurrency = currency == null
+          ? null
+          : currencyPreferenceForCode(currency.code);
     });
   }
 
@@ -60,20 +61,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return '$h:$m';
   }
 
-  Future<void> _pickTime({
-    required bool start,
-  }) async {
+  Future<void> _pickTime({required bool start}) async {
     final initial = TimeOfDay(
       hour: (start ? _workStartMinutes : _workEndMinutes) ~/ 60,
       minute: (start ? _workStartMinutes : _workEndMinutes) % 60,
     );
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: initial,
-    );
+    final picked = await showTimePicker(context: context, initialTime: initial);
     if (picked == null) return;
     final minutes = picked.hour * 60 + picked.minute;
-    UiRefreshBus.instance.update(this, () {
+    setState(() {
       if (start) {
         _workStartMinutes = minutes;
       } else {
@@ -83,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _toggleOffDay(int weekday) {
-    UiRefreshBus.instance.update(this, () {
+    setState(() {
       if (!_offDays.add(weekday)) {
         _offDays.remove(weekday);
       }
@@ -101,13 +97,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final filteredOptions = supportedCurrencyPreferences.where((option) {
-              if (query.trim().isEmpty) return true;
-              final q = query.toLowerCase();
-              return option.name.toLowerCase().contains(q) ||
-                  option.code.toLowerCase().contains(q) ||
-                  option.symbol.toLowerCase().contains(q);
-            }).toList(growable: false);
+            final filteredOptions = supportedCurrencyPreferences
+                .where((option) {
+                  if (query.trim().isEmpty) return true;
+                  final q = query.toLowerCase();
+                  return option.name.toLowerCase().contains(q) ||
+                      option.code.toLowerCase().contains(q) ||
+                      option.symbol.toLowerCase().contains(q);
+                })
+                .toList(growable: false);
 
             return SafeArea(
               child: Padding(
@@ -162,7 +160,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           itemCount: filteredOptions.length,
                           itemBuilder: (context, index) {
                             final option = filteredOptions[index];
-                            final isSelected = selected.code == option.code;
+                            final isSelected = selected?.code == option.code;
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 6,
@@ -190,11 +188,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
 
     if (result == null || !mounted) return;
-    UiRefreshBus.instance.update(this, () => _selectedCurrency = result);
+    setState(() => _selectedCurrency = result);
   }
 
   Future<void> _finish() async {
-    UiRefreshBus.instance.update(this, () => _saving = true);
+    final selectedCurrency = _selectedCurrency;
+    if (selectedCurrency == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose a currency.')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
     final schedule = OfficeSchedule(
       workStartMinutes: _workStartMinutes,
       workEndMinutes: _workEndMinutes,
@@ -205,7 +211,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await NotificationService.rescheduleHydrationReminders(
         schedule: schedule,
       );
-      final currencySynced = await _currencyRepository.save(_selectedCurrency);
+      final currencySynced = await _currencyRepository.save(selectedCurrency);
       final synced = scheduleSynced && currencySynced;
 
       final prefs = await SharedPreferences.getInstance();
@@ -226,7 +232,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         SnackBar(content: Text('Failed to save office timing: $error')),
       );
     } finally {
-      if (mounted) UiRefreshBus.instance.update(this, () => _saving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -241,180 +247,176 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 8),
-                    Text(
-                      'Welcome to Office Buddy',
-                      style: theme.textTheme.displayLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Set your office start time, end time, and off days. You can change this later.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            ObGlass(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Work hours',
-                                    style: theme.textTheme.titleLarge,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _TimePill(
-                                          label: 'Start',
-                                          value: _fmtTime(_workStartMinutes),
-                                          onTap: () => _pickTime(start: true),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _TimePill(
-                                          label: 'End',
-                                          value: _fmtTime(_workEndMinutes),
-                                          onTap: () =>
-                                              _pickTime(start: false),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  'Welcome to Office Buddy',
+                  style: theme.textTheme.displayLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Set your office start time, end time, and off days. You can change this later.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        ObGlass(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Work hours',
+                                style: theme.textTheme.titleLarge,
                               ),
-                            ),
-                            const SizedBox(height: 14),
-                            ObGlass(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              const SizedBox(height: 12),
+                              Row(
                                 children: [
-                                  Text(
-                                    'Off days',
-                                    style: theme.textTheme.titleLarge,
+                                  Expanded(
+                                    child: _TimePill(
+                                      label: 'Start',
+                                      value: _fmtTime(_workStartMinutes),
+                                      onTap: () => _pickTime(start: true),
+                                    ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Select the days you do not work.',
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Wrap(
-                                    spacing: 10,
-                                    runSpacing: 10,
-                                    children: _weekdayLabels.entries.map((entry) {
-                                      final isSelected = _offDays.contains(
-                                        entry.key,
-                                      );
-                                      return FilterChip(
-                                        label: Text(entry.value),
-                                        selected: isSelected,
-                                        onSelected: (_) =>
-                                            _toggleOffDay(entry.key),
-                                        showCheckmark: false,
-                                        selectedColor: ObTokens.mint.withValues(
-                                          alpha: 0.34,
-                                        ),
-                                        backgroundColor: Colors.white.withValues(
-                                          alpha: 0.32,
-                                        ),
-                                        labelStyle: theme.textTheme.bodyMedium
-                                            ?.copyWith(
-                                              fontWeight: isSelected
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w500,
-                                            ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                          side: BorderSide(
-                                            color: isSelected
-                                                ? ObTokens.mint
-                                                : Colors.white.withValues(
-                                                    alpha: 0.35,
-                                                  ),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            ObGlass(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Currency',
-                                    style: theme.textTheme.titleLarge,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Choose your default currency for finance tracking.',
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  InkWell(
-                                    onTap: _pickCurrency,
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 14,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.44,
-                                        ),
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              '${_selectedCurrency.name} (${_selectedCurrency.displayLabel})',
-                                              overflow: TextOverflow.ellipsis,
-                                              style: theme.textTheme.bodyLarge,
-                                            ),
-                                          ),
-                                          const Icon(Icons.expand_more),
-                                        ],
-                                      ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _TimePill(
+                                      label: 'End',
+                                      value: _fmtTime(_workEndMinutes),
+                                      onTap: () => _pickTime(start: false),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    ElevatedButton(
-                      onPressed: _saving ? null : _finish,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ObTokens.mint,
-                        foregroundColor: ObTokens.text,
-                        minimumSize: const Size.fromHeight(54),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                        const SizedBox(height: 14),
+                        ObGlass(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Off days',
+                                style: theme.textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Select the days you do not work.',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: _weekdayLabels.entries.map((entry) {
+                                  final isSelected = _offDays.contains(
+                                    entry.key,
+                                  );
+                                  return FilterChip(
+                                    label: Text(entry.value),
+                                    selected: isSelected,
+                                    onSelected: (_) => _toggleOffDay(entry.key),
+                                    showCheckmark: false,
+                                    selectedColor: ObTokens.mint.withValues(
+                                      alpha: 0.34,
+                                    ),
+                                    backgroundColor: Colors.white.withValues(
+                                      alpha: 0.32,
+                                    ),
+                                    labelStyle: theme.textTheme.bodyMedium
+                                        ?.copyWith(
+                                          fontWeight: isSelected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                        ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(999),
+                                      side: BorderSide(
+                                        color: isSelected
+                                            ? ObTokens.mint
+                                            : Colors.white.withValues(
+                                                alpha: 0.35,
+                                              ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      child: Text(_saving ? 'Saving...' : 'Continue'),
+                        const SizedBox(height: 14),
+                        ObGlass(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Currency',
+                                style: theme.textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Choose your default currency for finance tracking.',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              InkWell(
+                                onTap: _pickCurrency,
+                                borderRadius: BorderRadius.circular(14),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 14,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.44),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _selectedCurrency == null
+                                              ? 'Please select currency'
+                                              : '${_selectedCurrency!.name} (${_selectedCurrency!.displayLabel})',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.bodyLarge,
+                                        ),
+                                      ),
+                                      const Icon(Icons.expand_more),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 14),
+                ElevatedButton(
+                  onPressed: _saving ? null : _finish,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ObTokens.mint,
+                    foregroundColor: ObTokens.text,
+                    minimumSize: const Size.fromHeight(54),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  child: Text(_saving ? 'Saving...' : 'Continue'),
+                ),
+              ],
             ),
+          ),
+        ),
       ),
     );
   }
@@ -459,10 +461,7 @@ class _TimePill extends StatelessWidget {
           children: [
             Text(label, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 4),
-            Text(
-              value,
-              style: theme.textTheme.titleLarge,
-            ),
+            Text(value, style: theme.textTheme.titleLarge),
           ],
         ),
       ),

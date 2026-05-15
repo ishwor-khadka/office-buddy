@@ -14,18 +14,34 @@ class OfficeScheduleRepository {
   static const _kOffDays = 'office_off_days';
 
   Future<OfficeSchedule> load() async {
-    final fromFirebase = await loadFromFirebase();
-    if (fromFirebase != null) {
-      return fromFirebase;
-    }
+    final localSchedule = await loadLocal();
+    if (localSchedule != null) return localSchedule;
 
+    final fromFirebase = await loadFromFirebase();
+    return fromFirebase ??
+        OfficeSchedule(
+          workStartMinutes: 9 * 60,
+          workEndMinutes: 18 * 60,
+          offDays: const <int>[6, 7],
+        );
+  }
+
+  Future<OfficeSchedule?> loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    return OfficeSchedule(
-      workStartMinutes: prefs.getInt(_kStartMinutes) ?? 9 * 60,
-      workEndMinutes: prefs.getInt(_kEndMinutes) ?? 18 * 60,
-      offDays: prefs.getStringList(_kOffDays)?.map(int.parse).toList() ??
-          const <int>[6, 7],
-    );
+    final start = prefs.getInt(_kStartMinutes);
+    final end = prefs.getInt(_kEndMinutes);
+    final offDaysRaw = prefs.getStringList(_kOffDays);
+    if (start == null || end == null || offDaysRaw == null) return null;
+
+    try {
+      return OfficeSchedule(
+        workStartMinutes: start,
+        workEndMinutes: end,
+        offDays: offDaysRaw.map(int.parse).toList(growable: false),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<bool> hasSavedSchedule() async {
@@ -40,12 +56,18 @@ class OfficeScheduleRepository {
     final user = FirebaseBootstrap.authOrNull?.currentUser;
     if (firestore == null || user == null) return false;
 
-    final snapshot = await firestore
-        .collection(_collectionPath)
-        .doc(user.uid)
-        .collection(_settingsDocId)
-        .doc(_officeDocId)
-        .get();
+    final DocumentSnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await firestore
+          .collection(_collectionPath)
+          .doc(user.uid)
+          .collection(_settingsDocId)
+          .doc(_officeDocId)
+          .get();
+    } on FirebaseException catch (error) {
+      debugPrint('Failed to check office schedule in Firebase: $error');
+      return false;
+    }
 
     if (!snapshot.exists) return false;
     return _hasValidScheduleMap(snapshot.data());
@@ -81,12 +103,18 @@ class OfficeScheduleRepository {
     final user = FirebaseBootstrap.authOrNull?.currentUser;
     if (firestore == null || user == null) return null;
 
-    final snapshot = await firestore
-        .collection(_collectionPath)
-        .doc(user.uid)
-        .collection(_settingsDocId)
-        .doc(_officeDocId)
-        .get();
+    final DocumentSnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await firestore
+          .collection(_collectionPath)
+          .doc(user.uid)
+          .collection(_settingsDocId)
+          .doc(_officeDocId)
+          .get();
+    } on FirebaseException catch (error) {
+      debugPrint('Failed to load office schedule from Firebase: $error');
+      return null;
+    }
 
     if (!snapshot.exists || snapshot.data() == null) return null;
     return OfficeSchedule.fromJson(snapshot.data()!);
@@ -123,13 +151,10 @@ class OfficeScheduleRepository {
         .doc(user.uid)
         .collection(_settingsDocId)
         .doc(_officeDocId)
-        .set(
-          {
-            ...schedule.toJson(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        .set({
+          ...schedule.toJson(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
   }
 
   bool _hasValidScheduleMap(Map<String, dynamic>? data) {
@@ -156,10 +181,7 @@ class OfficeScheduleRepository {
   bool _isValidScheduleValues(int start, int end, List<int> offDays) {
     const minutesPerDay = 24 * 60;
     final validTimeRange =
-        start >= 0 &&
-        start < minutesPerDay &&
-        end >= 0 &&
-        end < minutesPerDay;
+        start >= 0 && start < minutesPerDay && end >= 0 && end < minutesPerDay;
     final validOffDays = offDays.every(
       (day) => day >= DateTime.monday && day <= DateTime.sunday,
     );

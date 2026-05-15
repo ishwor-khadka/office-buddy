@@ -14,11 +14,14 @@ class CurrencyPreferenceRepository {
   static const _kCurrencyName = 'currency_name';
 
   Future<CurrencyPreference> load() async {
-    final fromFirebase = await loadFromFirebase();
-    if (fromFirebase != null) {
-      return fromFirebase;
-    }
+    final localPreference = await loadLocal();
+    if (localPreference != null) return localPreference;
 
+    final fromFirebase = await loadFromFirebase();
+    return fromFirebase ?? CurrencyPreference.defaultPreference;
+  }
+
+  Future<CurrencyPreference?> loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final code = prefs.getString(_kCurrencyCode);
     final symbol = prefs.getString(_kCurrencySymbol);
@@ -27,7 +30,7 @@ class CurrencyPreferenceRepository {
       return CurrencyPreference(code: code, symbol: symbol, name: name);
     }
 
-    return CurrencyPreference.defaultPreference;
+    return null;
   }
 
   Future<bool> hasSavedPreference() async {
@@ -42,12 +45,18 @@ class CurrencyPreferenceRepository {
     final user = FirebaseBootstrap.authOrNull?.currentUser;
     if (firestore == null || user == null) return false;
 
-    final snapshot = await firestore
-        .collection(_collectionPath)
-        .doc(user.uid)
-        .collection(_settingsDocId)
-        .doc(_currencyDocId)
-        .get();
+    final DocumentSnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await firestore
+          .collection(_collectionPath)
+          .doc(user.uid)
+          .collection(_settingsDocId)
+          .doc(_currencyDocId)
+          .get();
+    } on FirebaseException catch (error) {
+      debugPrint('Failed to check currency preference in Firebase: $error');
+      return false;
+    }
 
     return snapshot.exists && snapshot.data() != null;
   }
@@ -64,12 +73,18 @@ class CurrencyPreferenceRepository {
     final user = FirebaseBootstrap.authOrNull?.currentUser;
     if (firestore == null || user == null) return null;
 
-    final snapshot = await firestore
-        .collection(_collectionPath)
-        .doc(user.uid)
-        .collection(_settingsDocId)
-        .doc(_currencyDocId)
-        .get();
+    final DocumentSnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await firestore
+          .collection(_collectionPath)
+          .doc(user.uid)
+          .collection(_settingsDocId)
+          .doc(_currencyDocId)
+          .get();
+    } on FirebaseException catch (error) {
+      debugPrint('Failed to load currency preference from Firebase: $error');
+      return null;
+    }
 
     if (!snapshot.exists || snapshot.data() == null) return null;
     return CurrencyPreference.fromJson(snapshot.data()!);

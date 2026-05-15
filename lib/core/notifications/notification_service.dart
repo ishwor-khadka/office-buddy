@@ -90,8 +90,6 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    await android?.requestNotificationsPermission();
-    await android?.requestExactAlarmsPermission();
     await android?.createNotificationChannel(channel);
 
     const hydrationChannel = AndroidNotificationChannel(
@@ -101,6 +99,15 @@ class NotificationService {
       importance: Importance.max,
     );
     await android?.createNotificationChannel(hydrationChannel);
+  }
+
+  static Future<void> requestAndroidPermissions() async {
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await android?.requestNotificationsPermission();
+    await android?.requestExactAlarmsPermission();
   }
 
   static Future<void> _configureLocalTimeZone() async {
@@ -188,11 +195,7 @@ class NotificationService {
         continue;
       }
 
-      final dayStart = DateTime(
-        date.year,
-        date.month,
-        date.day,
-      );
+      final dayStart = DateTime(date.year, date.month, date.day);
       final firstAt = dayStart.add(
         Duration(minutes: schedule.workStartMinutes + 30),
       );
@@ -207,10 +210,7 @@ class NotificationService {
       var at = firstAt;
       while (slot < 6 && !at.isAfter(lastAt)) {
         if (at.isAfter(now)) {
-          await _scheduleHydrationAt(
-            id: _hydrationIdFor(date, slot),
-            at: at,
-          );
+          await _scheduleHydrationAt(id: _hydrationIdFor(date, slot), at: at);
         }
         slot++;
         at = at.add(const Duration(minutes: 75));
@@ -234,11 +234,11 @@ class NotificationService {
     required DateTime at,
   }) async {
     final seed = at.millisecondsSinceEpoch + id;
-    final title =
-        hydrationTitles[seed.abs() % hydrationTitles.length];
+    final title = hydrationTitles[seed.abs() % hydrationTitles.length];
     final body = hydrationBodies[(seed ~/ 7).abs() % hydrationBodies.length];
     final actionLabel =
-        hydrationActionLabels[(seed ~/ 13).abs() % hydrationActionLabels.length];
+        hydrationActionLabels[(seed ~/ 13).abs() %
+            hydrationActionLabels.length];
 
     final android = AndroidNotificationDetails(
       hydrationChannelId,

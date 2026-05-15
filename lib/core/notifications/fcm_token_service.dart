@@ -17,7 +17,6 @@ class FcmTokenService {
 
     try {
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission();
       final token = await messaging.getToken();
       if (token == null || token.isEmpty) return null;
 

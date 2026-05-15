@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/ui/ui_refresh_bus.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/notifications/fcm_token_service.dart';
+import '../../../core/permissions/post_login_permission_service.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/settings/office_schedule_repository.dart';
 import '../../../core/ui/ob_background.dart';
@@ -18,8 +21,6 @@ class GoogleLoginScreen extends StatefulWidget {
 }
 
 class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
-  static const _kServerClientId =
-      '261131547010-00grjmhfe1fbl3f9jvlmnugrs7hade4j.apps.googleusercontent.com';
   final OfficeScheduleRepository _officeScheduleRepository =
       OfficeScheduleRepository();
 
@@ -34,13 +35,15 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
   }
 
   Future<void> _initializeGoogleSignIn() async {
-    await GoogleSignIn.instance.initialize(serverClientId: _kServerClientId);
+    await GoogleSignIn.instance.initialize();
   }
 
   Future<void> _skipIfSignedIn() async {
     final auth = FirebaseBootstrap.authOrNull;
     if (auth?.currentUser == null || !mounted) return;
-    final hasSavedSchedule = await _officeScheduleRepository.hasSavedSchedule();
+    final hasSavedSchedule = await _officeScheduleRepository
+        .hasSavedSchedule()
+        .timeout(const Duration(seconds: 4), onTimeout: () => false);
     if (!mounted) return;
     context.go(
       hasSavedSchedule ? AppRoutes.homeScreen : AppRoutes.onBoardingScreen,
@@ -70,11 +73,13 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
 
       final credential = GoogleAuthProvider.credential(idToken: idToken);
       await auth.signInWithCredential(credential);
-      await FcmTokenService.registerCurrentUserToken();
+      await _requestPostLoginPermissions();
+      unawaited(FcmTokenService.registerCurrentUserToken());
 
       if (!mounted) return;
       final hasSavedSchedule = await _officeScheduleRepository
-          .hasSavedSchedule();
+          .hasSavedSchedule()
+          .timeout(const Duration(seconds: 4), onTimeout: () => false);
       if (!mounted) return;
       context.go(
         hasSavedSchedule ? AppRoutes.homeScreen : AppRoutes.onBoardingScreen,
@@ -101,6 +106,16 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
       ).showSnackBar(const SnackBar(content: Text('Google sign-in failed')));
     } finally {
       if (mounted) UiRefreshBus.instance.update(this, () => _loading = false);
+    }
+  }
+
+  Future<void> _requestPostLoginPermissions() async {
+    try {
+      await PostLoginPermissionService.requestForCurrentUser().timeout(
+        const Duration(seconds: 45),
+      );
+    } catch (error) {
+      debugPrint('Post-login permission request did not complete: $error');
     }
   }
 

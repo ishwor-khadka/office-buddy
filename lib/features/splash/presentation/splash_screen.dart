@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'dart:async';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
+import '../../../core/notifications/fcm_token_service.dart';
+import '../../../core/permissions/post_login_permission_service.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/settings/office_schedule_repository.dart';
 
@@ -91,11 +93,26 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    final hasSavedSchedule = await _officeScheduleRepository.hasSavedSchedule();
+    unawaited(_runPostLoginSetup());
+
+    final hasSavedSchedule = await _officeScheduleRepository
+        .hasSavedSchedule()
+        .timeout(const Duration(seconds: 4), onTimeout: () => false);
     if (!mounted) return;
     context.go(
       hasSavedSchedule ? AppRoutes.homeScreen : AppRoutes.onBoardingScreen,
     );
+  }
+
+  Future<void> _runPostLoginSetup() async {
+    try {
+      await PostLoginPermissionService.requestForCurrentUser();
+      await FcmTokenService.registerCurrentUserToken().timeout(
+        const Duration(seconds: 8),
+      );
+    } catch (error) {
+      debugPrint('Post-login setup failed on splash: $error');
+    }
   }
 
   @override
