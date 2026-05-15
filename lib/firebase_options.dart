@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '726861644713',
     projectId: 'office-buddy-b4948',
     storageBucket: 'office-buddy-b4948.firebasestorage.app',
-    iosBundleId: 'com.agnepal.officeHealthApp',
+    iosBundleId: 'com.medavitech.officebuddy',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
