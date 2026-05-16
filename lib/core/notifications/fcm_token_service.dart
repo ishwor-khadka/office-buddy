@@ -8,6 +8,7 @@ class FcmTokenService {
   static const _kPrefsFcmToken = 'fcm_token';
   static const _collectionUsers = 'users';
   static const _collectionDeviceTokens = 'device_tokens';
+  static const _networkTimeout = Duration(seconds: 5);
 
   static Future<String?> registerCurrentUserToken() async {
     final auth = FirebaseBootstrap.authOrNull;
@@ -17,13 +18,13 @@ class FcmTokenService {
 
     try {
       final messaging = FirebaseMessaging.instance;
-      final token = await messaging.getToken();
+      final token = await messaging.getToken().timeout(_networkTimeout);
       if (token == null || token.isEmpty) return null;
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kPrefsFcmToken, token);
 
-      await _deleteAllUserTokenDocs(user.uid);
+      await _deleteAllUserTokenDocs(user.uid).timeout(_networkTimeout);
       final docId = _docIdForToken(token);
       await firestore
           .collection(_collectionUsers)
@@ -34,7 +35,8 @@ class FcmTokenService {
             'token': token,
             'platform': defaultTargetPlatform.name,
             'updatedAtMillis': DateTime.now().millisecondsSinceEpoch,
-          });
+          })
+          .timeout(_networkTimeout);
 
       return token;
     } catch (error) {
@@ -57,14 +59,15 @@ class FcmTokenService {
             .doc(user.uid)
             .collection(_collectionDeviceTokens)
             .doc(_docIdForToken(localToken))
-            .delete();
+            .delete()
+            .timeout(_networkTimeout);
       }
     } catch (error) {
       debugPrint('Failed to delete FCM token doc: $error');
     }
 
     try {
-      await FirebaseMessaging.instance.deleteToken();
+      await FirebaseMessaging.instance.deleteToken().timeout(_networkTimeout);
     } catch (error) {
       debugPrint('Failed to delete FCM token from device: $error');
     }
@@ -84,9 +87,10 @@ class FcmTokenService {
           .collection(_collectionUsers)
           .doc(uid)
           .collection(_collectionDeviceTokens)
-          .get();
+          .get()
+          .timeout(_networkTimeout);
       for (final doc in snapshot.docs) {
-        await doc.reference.delete();
+        await doc.reference.delete().timeout(_networkTimeout);
       }
     } catch (error) {
       debugPrint('Failed clearing old FCM tokens: $error');

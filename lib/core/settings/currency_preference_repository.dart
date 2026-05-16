@@ -12,6 +12,7 @@ class CurrencyPreferenceRepository {
   static const _kCurrencyCode = 'currency_code';
   static const _kCurrencySymbol = 'currency_symbol';
   static const _kCurrencyName = 'currency_name';
+  static const _firebaseTimeout = Duration(seconds: 3);
 
   Future<CurrencyPreference> load() async {
     final localPreference = await loadLocal();
@@ -93,7 +94,7 @@ class CurrencyPreferenceRepository {
   Future<bool> save(CurrencyPreference preference) async {
     await saveLocal(preference);
     try {
-      await saveToFirebase(preference);
+      await saveToFirebase(preference).timeout(_firebaseTimeout);
       return true;
     } catch (error) {
       debugPrint('Failed to save currency preference to Firebase: $error');
@@ -121,6 +122,7 @@ class CurrencyPreferenceRepository {
         .set({
           ...preference.toJson(),
           'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        }, SetOptions(merge: true))
+        .timeout(_firebaseTimeout);
   }
 }

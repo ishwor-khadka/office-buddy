@@ -12,6 +12,7 @@ class OfficeScheduleRepository {
   static const _kStartMinutes = 'office_start_minutes';
   static const _kEndMinutes = 'office_end_minutes';
   static const _kOffDays = 'office_off_days';
+  static const _firebaseTimeout = Duration(seconds: 3);
 
   Future<OfficeSchedule> load() async {
     final localSchedule = await loadLocal();
@@ -123,7 +124,7 @@ class OfficeScheduleRepository {
   Future<bool> save(OfficeSchedule schedule) async {
     await saveLocal(schedule);
     try {
-      await saveToFirebase(schedule);
+      await saveToFirebase(schedule).timeout(_firebaseTimeout);
       return true;
     } catch (error) {
       debugPrint('Failed to save office schedule to Firebase: $error');
@@ -154,7 +155,8 @@ class OfficeScheduleRepository {
         .set({
           ...schedule.toJson(),
           'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        }, SetOptions(merge: true))
+        .timeout(_firebaseTimeout);
   }
 
   bool _hasValidScheduleMap(Map<String, dynamic>? data) {

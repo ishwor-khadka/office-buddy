@@ -20,5 +20,5 @@ String formatMoneyFromNumber(num value, String symbol) {
   final numericText = amount == rounded
       ? rounded.toInt().toString()
       : amount.toStringAsFixed(2);
-  return '$symbol$numericText';
+  return '$symbol $numericText';
 }

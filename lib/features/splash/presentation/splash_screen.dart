@@ -107,9 +107,9 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _runPostLoginSetup() async {
     try {
       await PostLoginPermissionService.requestForCurrentUser();
-      await FcmTokenService.registerCurrentUserToken().timeout(
-        const Duration(seconds: 8),
-      );
+      await FcmTokenService.registerCurrentUserToken();
+    } on TimeoutException {
+      // Firestore/FCM registration is best-effort; routing should stay quiet.
     } catch (error) {
       debugPrint('Post-login setup failed on splash: $error');
     }

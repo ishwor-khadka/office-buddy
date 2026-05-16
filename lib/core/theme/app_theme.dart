@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static ThemeData get glassLightTheme {
@@ -16,44 +15,34 @@ class AppTheme {
       primary: brandMint,
       secondary: brandIris,
       surface: surface,
-    ).copyWith(
-      onSurface: text,
-      onPrimary: text,
-      onSecondary: Colors.white,
-    );
+    ).copyWith(onSurface: text, onPrimary: text, onSecondary: Colors.white);
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: canvas,
       colorScheme: colorScheme,
-      textTheme: GoogleFonts.outfitTextTheme().copyWith(
-        displayLarge: GoogleFonts.outfit(
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(
           fontSize: 34,
           fontWeight: FontWeight.w700,
           color: text,
           letterSpacing: -0.6,
         ),
-        titleLarge: GoogleFonts.outfit(
+        titleLarge: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w600,
           color: text,
         ),
-        bodyLarge: GoogleFonts.outfit(
-          fontSize: 16,
-          color: text,
-        ),
-        bodyMedium: GoogleFonts.outfit(
-          fontSize: 14,
-          color: textMuted,
-        ),
+        bodyLarge: TextStyle(fontSize: 16, color: text),
+        bodyMedium: TextStyle(fontSize: 14, color: textMuted),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: text,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: GoogleFonts.outfit(
+        titleTextStyle: const TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w700,
           color: text,
@@ -61,7 +50,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: const Color(0xFF0B1B14).withValues(alpha: 0.92),
-        contentTextStyle: GoogleFonts.outfit(color: Colors.white),
+        contentTextStyle: const TextStyle(color: Colors.white),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),

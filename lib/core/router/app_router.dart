@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:office_buddy/core/router/app_routes.dart';
 import '../../core/breaks/step_activity_controller.dart';
 import '../../core/ui/ob_bottom_bar.dart';
-import '../../core/ui/ui_refresh_bus.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/auth/presentation/google_login_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
@@ -172,6 +171,7 @@ class MainScaffold extends ConsumerStatefulWidget {
 
 class _MainScaffoldState extends ConsumerState<MainScaffold> {
   int _currentIndex = 0;
+  final ValueNotifier<int> _tabRefreshTick = ValueNotifier<int>(0);
 
   static const List<Widget> _screens = <Widget>[
     HomeScreen(),
@@ -179,20 +179,31 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   ];
 
   @override
+  void dispose() {
+    _tabRefreshTick.dispose();
+    super.dispose();
+  }
+
+  void _selectTab(int index) {
+    _currentIndex = index.clamp(0, _screens.length - 1);
+    _tabRefreshTick.value++;
+  }
+
+  @override
   Widget build(BuildContext context) {
     ref.watch(stepActivityControllerProvider);
 
-    return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: ObBottomBar(
-        currentIndex: _currentIndex,
-        onSelect: (i) {
-          UiRefreshBus.instance.update(
-            this,
-            () => _currentIndex = i.clamp(0, _screens.length - 1),
-          );
-        },
-      ),
+    return ValueListenableBuilder<int>(
+      valueListenable: _tabRefreshTick,
+      builder: (context, _, child) {
+        return Scaffold(
+          body: _screens[_currentIndex],
+          bottomNavigationBar: ObBottomBar(
+            currentIndex: _currentIndex,
+            onSelect: _selectTab,
+          ),
+        );
+      },
     );
   }
 }

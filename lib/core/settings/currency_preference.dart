@@ -11,7 +11,7 @@ class CurrencyPreference {
 
   static const CurrencyPreference defaultPreference = CurrencyPreference(
     code: 'NPR',
-    symbol: 'NPR',
+    symbol: 'रु',
     name: 'Nepalese Rupee',
   );
 
@@ -105,7 +105,7 @@ supportedCurrencyPreferences = <CurrencyPreference>[
   CurrencyPreference(code: 'HNL', symbol: 'HNL', name: 'Honduran Lempira'),
   CurrencyPreference(code: 'HTG', symbol: 'HTG', name: 'Haitian Gourde'),
   CurrencyPreference(code: 'HUF', symbol: 'HUF', name: 'Hungarian Forint'),
-  CurrencyPreference(code: 'IDR', symbol: 'IDR', name: 'Indonesian Rupiah'),
+  CurrencyPreference(code: 'IDR', symbol: '₹', name: 'Indonesian Rupiah'),
   CurrencyPreference(code: 'ILS', symbol: '₪', name: 'Israeli New Shekel'),
   CurrencyPreference(code: 'INR', symbol: '₹', name: 'Indian Rupee'),
   CurrencyPreference(code: 'IQD', symbol: 'IQD', name: 'Iraqi Dinar'),
@@ -147,7 +147,7 @@ supportedCurrencyPreferences = <CurrencyPreference>[
   CurrencyPreference(code: 'NGN', symbol: 'NGN', name: 'Nigerian Naira'),
   CurrencyPreference(code: 'NIO', symbol: 'NIO', name: 'Nicaraguan Cordoba'),
   CurrencyPreference(code: 'NOK', symbol: 'NOK', name: 'Norwegian Krone'),
-  CurrencyPreference(code: 'NPR', symbol: 'NPR', name: 'Nepalese Rupee'),
+  CurrencyPreference(code: 'NPR', symbol: 'रु', name: 'Nepalese Rupee'),
   CurrencyPreference(code: 'NZD', symbol: 'NZ\$', name: 'New Zealand Dollar'),
   CurrencyPreference(code: 'OMR', symbol: 'OMR', name: 'Omani Rial'),
   CurrencyPreference(code: 'PAB', symbol: 'PAB', name: 'Panamanian Balboa'),

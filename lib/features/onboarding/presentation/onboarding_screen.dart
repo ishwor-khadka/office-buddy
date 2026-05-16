@@ -79,7 +79,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       hour: (start ? _workStartMinutes : _workEndMinutes) ~/ 60,
       minute: (start ? _workStartMinutes : _workEndMinutes) % 60,
     );
-    final picked = await showTimePicker(context: context, initialTime: initial);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.black, // button text color
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
     if (picked == null) return;
     final minutes = picked.hour * 60 + picked.minute;
     _refresh(() {
@@ -120,6 +135,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 })
                 .toList(growable: false);
 
+            final sheetHeight = MediaQuery.of(sheetContext).size.height * 0.78;
+
             return SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(
@@ -128,69 +145,69 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
                   top: 20,
                 ),
-                child: ObGlass(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Choose Currency',
-                              style: Theme.of(context).textTheme.titleLarge,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: sheetHeight),
+                  child: ObGlass(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Choose Currency',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.of(sheetContext).pop(),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          onChanged: (value) {
+                            setSheetState(() => query = value);
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search currency, code, or symbol',
+                            prefixIcon: const Icon(Icons.search),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: 0.45),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
                             ),
                           ),
-                          IconButton(
-                            onPressed: () => Navigator.of(sheetContext).pop(),
-                            icon: const Icon(Icons.close),
+                        ),
+                        const SizedBox(height: 10),
+                        Flexible(
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: filteredOptions.length,
+                            itemBuilder: (context, index) {
+                              final option = filteredOptions[index];
+                              final isSelected = selected?.code == option.code;
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                title: Text(option.name),
+                                subtitle: Text(option.code),
+                                trailing: Text(option.symbol),
+                                selected: isSelected,
+                                onTap: () {
+                                  setSheetState(() => selected = option);
+                                  Navigator.of(sheetContext).pop(option);
+                                },
+                              );
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        onChanged: (value) {
-                          setSheetState(() => query = value);
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Search currency, code, or symbol',
-                          prefixIcon: const Icon(Icons.search),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.45),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.5,
-                        ),
-                        child: ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: filteredOptions.length,
-                          itemBuilder: (context, index) {
-                            final option = filteredOptions[index];
-                            final isSelected = selected?.code == option.code;
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                              ),
-                              title: Text(option.name),
-                              subtitle: Text(option.code),
-                              trailing: Text(option.symbol),
-                              selected: isSelected,
-                              onTap: () {
-                                setSheetState(() => selected = option);
-                                Navigator.of(sheetContext).pop(option);
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

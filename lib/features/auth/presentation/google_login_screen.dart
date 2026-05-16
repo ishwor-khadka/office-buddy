@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:office_buddy/constants/asset_source.dart';
 import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
@@ -203,14 +205,7 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
                                 color: Color(0xFFF5F5F5),
                               ),
                               alignment: Alignment.center,
-                              child: const Text(
-                                'G',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF4285F4),
-                                ),
-                              ),
+                              child: SvgPicture.asset(AssetSource.googleIcon),
                             ),
                             const SizedBox(width: 12),
                             Text(
