@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
 import '../../../core/notifications/fcm_token_service.dart';
 import '../../../core/notifications/notification_service.dart';
 import '../../../core/permissions/post_login_permission_service.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/settings/currency_preference.dart';
 import '../../../core/settings/currency_preference_repository.dart';
 import '../../../core/settings/office_schedule.dart';
@@ -56,8 +58,9 @@ class _AccountScreenState extends State<AccountScreen> {
         email: _email.text.trim(),
         password: _password.text,
       );
-      await _requestPostLoginPermissions();
       unawaited(FcmTokenService.registerCurrentUserToken());
+      final routedToPermissions = await _routeToPermissionsIfNeeded();
+      if (routedToPermissions) return;
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -89,8 +92,9 @@ class _AccountScreenState extends State<AccountScreen> {
         email: _email.text.trim(),
         password: _password.text,
       );
-      await _requestPostLoginPermissions();
       unawaited(FcmTokenService.registerCurrentUserToken());
+      final routedToPermissions = await _routeToPermissionsIfNeeded();
+      if (routedToPermissions) return;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -131,14 +135,12 @@ class _AccountScreenState extends State<AccountScreen> {
     }
   }
 
-  Future<void> _requestPostLoginPermissions() async {
-    try {
-      await PostLoginPermissionService.requestForCurrentUser().timeout(
-        const Duration(seconds: 45),
-      );
-    } catch (error) {
-      debugPrint('Post-login permission request did not complete: $error');
-    }
+  Future<bool> _routeToPermissionsIfNeeded() async {
+    final hasCompletedPermissions =
+        await PostLoginPermissionService.hasCompletedForCurrentUser();
+    if (!mounted || hasCompletedPermissions) return false;
+    context.go(AppRoutes.permissionOnboardingScreen);
+    return true;
   }
 
   String _formatTime(int minutes) {

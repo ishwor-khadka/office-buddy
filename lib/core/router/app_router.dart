@@ -24,6 +24,7 @@ import '../../features/finance/presentation/lend_borrow_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/account/presentation/account_screen.dart';
 import '../../features/hydration/presentation/hydration_screen.dart';
+import '../../features/permissions/presentation/permission_onboarding_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -67,6 +68,10 @@ GoRouter _createAppRouter() {
       GoRoute(
         path: AppRoutes.splashScreen,
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.permissionOnboardingScreen,
+        builder: (context, state) => const PermissionOnboardingScreen(),
       ),
       GoRoute(
         path: AppRoutes.homeScreen,

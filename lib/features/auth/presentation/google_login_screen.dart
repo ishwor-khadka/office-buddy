@@ -43,6 +43,14 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
   Future<void> _skipIfSignedIn() async {
     final auth = FirebaseBootstrap.authOrNull;
     if (auth?.currentUser == null || !mounted) return;
+    final hasCompletedPermissions =
+        await PostLoginPermissionService.hasCompletedForCurrentUser();
+    if (!mounted) return;
+    if (!hasCompletedPermissions) {
+      context.go(AppRoutes.permissionOnboardingScreen);
+      return;
+    }
+
     final hasSavedSchedule = await _officeScheduleRepository
         .hasSavedSchedule()
         .timeout(const Duration(seconds: 4), onTimeout: () => false);
@@ -75,10 +83,17 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
 
       final credential = GoogleAuthProvider.credential(idToken: idToken);
       await auth.signInWithCredential(credential);
-      await _requestPostLoginPermissions();
       unawaited(FcmTokenService.registerCurrentUserToken());
 
       if (!mounted) return;
+      final hasCompletedPermissions =
+          await PostLoginPermissionService.hasCompletedForCurrentUser();
+      if (!mounted) return;
+      if (!hasCompletedPermissions) {
+        context.go(AppRoutes.permissionOnboardingScreen);
+        return;
+      }
+
       final hasSavedSchedule = await _officeScheduleRepository
           .hasSavedSchedule()
           .timeout(const Duration(seconds: 4), onTimeout: () => false);
@@ -108,16 +123,6 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
       ).showSnackBar(const SnackBar(content: Text('Google sign-in failed')));
     } finally {
       if (mounted) UiRefreshBus.instance.update(this, () => _loading = false);
-    }
-  }
-
-  Future<void> _requestPostLoginPermissions() async {
-    try {
-      await PostLoginPermissionService.requestForCurrentUser().timeout(
-        const Duration(seconds: 45),
-      );
-    } catch (error) {
-      debugPrint('Post-login permission request did not complete: $error');
     }
   }
 

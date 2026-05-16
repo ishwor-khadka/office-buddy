@@ -7,37 +7,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../notifications/notification_service.dart';
 
 class PostLoginPermissionService {
-  static const _kRequestedPrefix = 'post_login_permissions_requested_';
-  static Future<void>? _inFlightRequest;
+  static const _kRequestedPrefix =
+      'post_login_permission_onboarding_completed_';
 
-  static Future<void> requestForCurrentUser({bool force = false}) async {
-    if (_inFlightRequest != null) {
-      return _inFlightRequest;
-    }
+  static Future<bool> hasCompletedForCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return true;
 
-    _inFlightRequest = _requestForCurrentUser(force: force);
-    try {
-      await _inFlightRequest;
-    } finally {
-      _inFlightRequest = null;
-    }
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_requestedKey(user.uid)) ?? false;
   }
 
-  static Future<void> _requestForCurrentUser({required bool force}) async {
+  static Future<void> markCompletedForCurrentUser() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final requestedKey = '$_kRequestedPrefix${user.uid}';
-    if (!force && (prefs.getBool(requestedKey) ?? false)) {
-      return;
-    }
+    await prefs.setBool(_requestedKey(user.uid), true);
+  }
 
-    await _requestCamera();
-    await _requestActivityRecognition();
-    await _requestNotifications();
+  static Future<void> requestCamera() => _requestCamera();
 
-    await prefs.setBool(requestedKey, true);
+  static Future<void> requestActivityRecognition() =>
+      _requestActivityRecognition();
+
+  static Future<void> requestNotifications() => _requestNotifications();
+
+  static String _requestedKey(String uid) {
+    return '$_kRequestedPrefix$uid';
   }
 
   static Future<void> _requestCamera() async {

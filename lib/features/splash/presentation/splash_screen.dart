@@ -95,6 +95,14 @@ class _SplashScreenState extends State<SplashScreen>
 
     unawaited(_runPostLoginSetup());
 
+    final hasCompletedPermissions =
+        await PostLoginPermissionService.hasCompletedForCurrentUser();
+    if (!mounted) return;
+    if (!hasCompletedPermissions) {
+      context.go(AppRoutes.permissionOnboardingScreen);
+      return;
+    }
+
     final hasSavedSchedule = await _officeScheduleRepository
         .hasSavedSchedule()
         .timeout(const Duration(seconds: 4), onTimeout: () => false);
@@ -106,7 +114,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _runPostLoginSetup() async {
     try {
-      await PostLoginPermissionService.requestForCurrentUser();
       await FcmTokenService.registerCurrentUserToken();
     } on TimeoutException {
       // Firestore/FCM registration is best-effort; routing should stay quiet.
