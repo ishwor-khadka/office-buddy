@@ -1,6 +1,7 @@
+import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -156,7 +157,7 @@ class _EyeDrynessScreenState extends State<EyeDrynessScreen> with TickerProvider
       await _cameraController?.initialize();
 
       if (mounted) {
-        setState(() => _isCameraInitialized = true);
+        UiRefreshBus.instance.update(this, () => _isCameraInitialized = true);
       }
     } catch (e) {
       debugPrint('Camera error: $e');
@@ -166,7 +167,7 @@ class _EyeDrynessScreenState extends State<EyeDrynessScreen> with TickerProvider
   void _startTest() async {
     await _initializeCamera();
 
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _testState = EyeTestState.scanning;
       _totalBlinks = 0;
       _remainingSeconds = _testDurationSeconds;
@@ -185,7 +186,7 @@ class _EyeDrynessScreenState extends State<EyeDrynessScreen> with TickerProvider
         return;
       }
 
-      setState(() {
+      UiRefreshBus.instance.update(this, () {
         _remainingSeconds--;
       });
 
@@ -267,7 +268,7 @@ class _EyeDrynessScreenState extends State<EyeDrynessScreen> with TickerProvider
     if (!_eyesWereClosed && avgEyeOpen < closedThreshold) {
       _eyesWereClosed = true;
     } else if (_eyesWereClosed && avgEyeOpen > openThreshold) {
-      setState(() {
+      UiRefreshBus.instance.update(this, () {
         _totalBlinks++;
       });
       _eyesWereClosed = false;
@@ -288,7 +289,7 @@ class _EyeDrynessScreenState extends State<EyeDrynessScreen> with TickerProvider
 
     final result = EyeDrynessResult.calculate(_totalBlinks, testDuration);
 
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _testState = EyeTestState.results;
       _result = result;
     });
@@ -297,7 +298,7 @@ class _EyeDrynessScreenState extends State<EyeDrynessScreen> with TickerProvider
   void _resetTest() {
     _cameraController?.dispose();
     _cameraController = null;
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _testState = EyeTestState.intro;
       _totalBlinks = 0;
       _remainingSeconds = _testDurationSeconds;

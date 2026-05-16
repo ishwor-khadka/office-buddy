@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'dart:async';
-import 'dart:ui';
 
 import '../../../core/data/database_helper.dart';
 import '../../../core/exercises/exercise.dart';
@@ -17,7 +17,8 @@ class ExerciseDetailScreen extends ConsumerStatefulWidget {
   const ExerciseDetailScreen({super.key, required this.exercise});
 
   @override
-  ConsumerState<ExerciseDetailScreen> createState() => _ExerciseDetailScreenState();
+  ConsumerState<ExerciseDetailScreen> createState() =>
+      _ExerciseDetailScreenState();
 }
 
 class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
@@ -40,12 +41,12 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
     } else {
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (_secondsLeft > 0) {
-          setState(() {
+          UiRefreshBus.instance.update(this, () {
             _secondsLeft--;
           });
         } else {
           timer.cancel();
-          setState(() {
+          UiRefreshBus.instance.update(this, () {
             _isPlaying = false;
             _isFinished = true;
           });
@@ -53,7 +54,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
         }
       });
     }
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _isPlaying = !_isPlaying;
     });
   }
@@ -86,16 +87,14 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Convert duration to MM:SS
     final minutesUrl = (_secondsLeft ~/ 60).toString().padLeft(2, '0');
     final secondsUrl = (_secondsLeft % 60).toString().padLeft(2, '0');
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text(widget.exercise.title),
-      ),
+      appBar: AppBar(title: Text(widget.exercise.title)),
       body: ObBackground(
         child: SafeArea(
           child: Padding(
@@ -118,8 +117,12 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      theme.colorScheme.primary.withValues(alpha: 0.28),
-                                      theme.colorScheme.secondary.withValues(alpha: 0.18),
+                                      theme.colorScheme.primary.withValues(
+                                        alpha: 0.28,
+                                      ),
+                                      theme.colorScheme.secondary.withValues(
+                                        alpha: 0.18,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -139,7 +142,9 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.35),
                               borderRadius: BorderRadius.circular(999),
@@ -204,7 +209,7 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                   child: ObGlass(
                     child: ListView.separated(
                       itemCount: widget.exercise.instructions.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final step = widget.exercise.instructions[index];
                         return Row(
@@ -215,7 +220,9 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                               height: 26,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.25,
+                                ),
                                 border: Border.all(
                                   color: Colors.white.withValues(alpha: 0.35),
                                 ),
@@ -229,7 +236,10 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(step, style: theme.textTheme.bodyLarge),
+                              child: Text(
+                                step,
+                                style: theme.textTheme.bodyLarge,
+                              ),
                             ),
                           ],
                         );

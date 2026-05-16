@@ -93,7 +93,9 @@ class _Item extends StatelessWidget {
       curve: Curves.easeOut,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: active ? ObTokens.mint.withValues(alpha: 0.18) : Colors.transparent,
+        color: active
+            ? ObTokens.mint.withValues(alpha: 0.18)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
       ),
       child: InkWell(

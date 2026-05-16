@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.agnepal" "\0"
+            VALUE "CompanyName", "com.medavitech" "\0"
             VALUE "FileDescription", "office_health_app" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "office_health_app" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.agnepal. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.medavitech. All rights reserved." "\0"
             VALUE "OriginalFilename", "office_health_app.exe" "\0"
             VALUE "ProductName", "office_health_app" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

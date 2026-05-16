@@ -1,0 +1,70 @@
+{
+  "project_info": {
+    "project_number": "726861644713",
+    "project_id": "office-buddy-b4948",
+    "storage_bucket": "office-buddy-b4948.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:726861644713:android:072359b29d6bd9ba2c7ab8",
+        "android_client_info": {
+          "package_name": "com.medavitech.officebuddy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "726861644713-dha2gtjjcnuklu7nag676uhnti368dcs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.medavitech.officebuddy",
+            "certificate_hash": "4d25e3945815b8ef605f2b24324f42fdc51a6683"
+          }
+        },
+        {
+          "client_id": "726861644713-h4ut8bveb103s16mi5qdkf8snlcvtt65.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.medavitech.officebuddy",
+            "certificate_hash": "3ee052d8a7d943ae42eaa7cfaf605c66ec1bbc5a"
+          }
+        },
+        {
+          "client_id": "726861644713-me8srbquc404qe48tkb3j0g28chdnirh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.medavitech.officebuddy",
+            "certificate_hash": "874e83cf4502d1036af01cf7594fbda38bd8a53f"
+          }
+        },
+        {
+          "client_id": "726861644713-p71mnats4l88o62bbc1ensqa5lfl6soo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCd2Kwif_zSpR78zRHpB2gGAmhS6Hel2Ik"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "726861644713-p71mnats4l88o62bbc1ensqa5lfl6soo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "726861644713-84j7l3jfvuf9emg2vu2c1vpe56leqkmd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.medavitech.officebuddy"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

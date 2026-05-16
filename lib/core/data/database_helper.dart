@@ -20,7 +20,7 @@ class DatabaseHelper {
     return _database!;
   }
 
-  _initDatabase() async {
+  Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), _databaseName);
     return await openDatabase(
       path,
@@ -136,7 +136,9 @@ class DatabaseHelper {
     String? outcome,
   }) async {
     final db = await database;
-    final where = outcome == null ? 'timestamp >= ?' : 'timestamp >= ? AND outcome = ?';
+    final where = outcome == null
+        ? 'timestamp >= ?'
+        : 'timestamp >= ? AND outcome = ?';
     final args = outcome == null ? [sinceMillis] : [sinceMillis, outcome];
     final result = await db.rawQuery(
       'SELECT COUNT(*) AS c FROM $tableBreakLogs WHERE $where',
@@ -150,7 +152,9 @@ class DatabaseHelper {
     String? result,
   }) async {
     final db = await database;
-    final where = result == null ? 'timestamp >= ?' : 'timestamp >= ? AND result = ?';
+    final where = result == null
+        ? 'timestamp >= ?'
+        : 'timestamp >= ? AND result = ?';
     final args = result == null ? [sinceMillis] : [sinceMillis, result];
     final rows = await db.rawQuery(
       'SELECT COUNT(*) AS c FROM $tablePostureLogs WHERE $where',

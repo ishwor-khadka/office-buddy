@@ -155,24 +155,18 @@ class ExercisesScreen extends ConsumerWidget {
                     ],
                     Expanded(
                       child: ListView.builder(
+                        cacheExtent: 900,
                         itemCount: filtered.length,
                         itemBuilder: (context, index) {
                           final exercise = filtered[index];
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12.0),
-                            child:
-                                _buildExerciseCard(
-                                      context,
-                                      ref,
-                                      exercise,
-                                      favorites.contains(exercise.id),
-                                    )
-                                    .animate(key: ValueKey(exercise.id))
-                                    .fade(
-                                      duration: 350.ms,
-                                      delay: (60 * index).ms,
-                                    )
-                                    .slideY(begin: 0.06),
+                            child: _buildExerciseCard(
+                              context,
+                              ref,
+                              exercise,
+                              favorites.contains(exercise.id),
+                            ),
                           );
                         },
                       ),

@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:office_buddy/constants/asset_source.dart' as assets;
 
 class BirdsAudio {
   // Public domain audio hosted by Wikimedia (royalty-free).
@@ -39,7 +40,6 @@ class BirdsAudio {
     }
 
     // Fallback to bundled asset if download fails.
-    await player.play(AssetSource('birds.mp3'));
+    await player.play(AssetSource(assets.AssetSource.birdMp3));
   }
 }
-

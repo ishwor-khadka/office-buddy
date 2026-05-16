@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
@@ -7,6 +8,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'dart:ui';
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:office_buddy/constants/asset_source.dart' as source;
 
 import '../../../core/tracking/tracking_repository.dart';
 import '../../../core/audio/birds_audio.dart';
@@ -23,7 +25,7 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
   static const int _sessionDurationSeconds = 60;
 
   // Box breathing: 4s inhale, 4s hold, 4s exhale, 4s hold = 16s cycle
-  late AnimationController _cycleController;  // 16-second cycle
+  late AnimationController _cycleController; // 16-second cycle
   late AnimationController _rippleController; // Continuous ripple pulse
 
   int _secondsLeft = _sessionDurationSeconds; // 1 minute
@@ -55,17 +57,21 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
     // Breathing scale: inhale expand, hold at max, exhale contract, hold at min
     _breathScale = TweenSequence<double>([
       TweenSequenceItem(
-          tween: Tween(begin: 0.3, end: 1.0)
-              .chain(CurveTween(curve: Curves.easeInOut)),
-          weight: 25), // Inhale 4s
+        tween: Tween(
+          begin: 0.3,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 25,
+      ), // Inhale 4s
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 25), // Hold 4s
       TweenSequenceItem(
-          tween: ConstantTween(1.0), weight: 25), // Hold 4s
-      TweenSequenceItem(
-          tween: Tween(begin: 1.0, end: 0.3)
-              .chain(CurveTween(curve: Curves.easeInOut)),
-          weight: 25), // Exhale 4s
-      TweenSequenceItem(
-          tween: ConstantTween(0.3), weight: 25), // Hold 4s
+        tween: Tween(
+          begin: 1.0,
+          end: 0.3,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 25,
+      ), // Exhale 4s
+      TweenSequenceItem(tween: ConstantTween(0.3), weight: 25), // Hold 4s
     ]).animate(_cycleController);
 
     // Ripple controller for outer animated rings
@@ -78,9 +84,9 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
   void _onCycleTick() {
     final phase = (_cycleController.value * 4).floor().clamp(0, 3);
     if (phase != _currentPhase) {
-      setState(() => _currentPhase = phase);
+      UiRefreshBus.instance.update(this, () => _currentPhase = phase);
     } else {
-      setState(() {});
+      UiRefreshBus.instance.update(this, () {});
     }
   }
 
@@ -159,9 +165,7 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
 
     _audioErrorShown = true;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Could not play birds sound. Check assets/birds.mp3.'),
-      ),
+      const SnackBar(content: Text('Could not play birds sound.')),
     );
   }
 
@@ -170,14 +174,14 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
       _cycleController.stop();
       _countdownTimer?.cancel();
       _pauseAudio();
-      setState(() => _isPlaying = false);
+      UiRefreshBus.instance.update(this, () => _isPlaying = false);
     } else {
       if (_secondsLeft <= 0) {
         _secondsLeft = _sessionDurationSeconds;
         _currentPhase = 0;
       }
       _cycleController.repeat();
-      setState(() => _isPlaying = true);
+      UiRefreshBus.instance.update(this, () => _isPlaying = true);
 
       if (!_isMuted) {
         _playAudio();
@@ -185,7 +189,7 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
 
       _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
         if (_secondsLeft > 0) {
-          setState(() => _secondsLeft--);
+          UiRefreshBus.instance.update(this, () => _secondsLeft--);
         } else {
           t.cancel();
           _timerFinished();
@@ -197,7 +201,7 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
   void _timerFinished() {
     _cycleController.stop();
     _stopAudio();
-    setState(() {
+    UiRefreshBus.instance.update(this, () {
       _isPlaying = false;
       _secondsLeft = 0;
     });
@@ -209,7 +213,7 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
   }
 
   void _toggleMute() {
-    setState(() => _isMuted = !_isMuted);
+    UiRefreshBus.instance.update(this, () => _isMuted = !_isMuted);
     if (_isMuted) {
       _pauseAudio();
     } else if (_isPlaying) {
@@ -228,10 +232,10 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
             Positioned.fill(
               child: IgnorePointer(
                 child: Lottie.asset(
-                  'assets/Confetti Burst.json',
+                  source.AssetSource.confrttirBrustJson,
                   repeat: true,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
                 ),
               ),
             ),
@@ -251,7 +255,11 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset('assets/energy.png', width: 80, height: 80)
+                        Image.asset(
+                              source.AssetSource.energyImg,
+                              width: 80,
+                              height: 80,
+                            )
                             .animate(onPlay: (c) => c.repeat())
                             .shimmer(duration: 2.seconds)
                             .scaleXY(begin: 0.9, end: 1.1, duration: 1.seconds)
@@ -271,7 +279,9 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
                         const Text(
                           'Your heart rate and stress levels have normalized. Great job taking a moment for yourself!',
                           style: TextStyle(
-                              fontSize: 15, color: Color(0xFF5C4033)),
+                            fontSize: 15,
+                            color: Color(0xFF5C4033),
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 32),
@@ -287,12 +297,17 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
                           ),
                           onPressed: () {
                             Navigator.of(ctx).pop();
-                            Navigator.of(context)
-                                .popUntil((route) => route.isFirst);
+                            Navigator.of(
+                              context,
+                            ).popUntil((route) => route.isFirst);
                           },
-                          child: const Text('Back to Dashboard',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w600)),
+                          child: const Text(
+                            'Back to Dashboard',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -324,8 +339,10 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
             children: [
               // ─── Top bar ───────────────────────────────────────────
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 child: Row(
                   children: [
                     // Back button
@@ -338,8 +355,11 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
                           color: _onColor.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.arrow_back_ios_new,
-                            color: _onColor, size: 18),
+                        child: Icon(
+                          Icons.arrow_back_ios_new,
+                          color: _onColor,
+                          size: 18,
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -349,12 +369,15 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: _onColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                              color: _onColor.withValues(alpha: 0.3)),
+                            color: _onColor.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -447,9 +470,7 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: _isPlaying
-                        ? _onColor
-                        : const Color(0xFF87AE6E),
+                    color: _isPlaying ? _onColor : const Color(0xFF87AE6E),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -462,7 +483,9 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
                     child: Icon(
-                      _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                      _isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                       key: ValueKey<bool>(_isPlaying),
                       color: _isPlaying ? _bgColor : Colors.white,
                       size: 44,
