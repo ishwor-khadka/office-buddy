@@ -13,6 +13,11 @@ import '../settings/settings_repository.dart';
 import 'break_state_repository.dart';
 import '../data/database_helper.dart';
 
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  BreakBackground.executeTask();
+}
+
 class BreakBackground {
   static const String periodicTaskName = 'office_buddy_break_tick';
   static const String hydrationRetryTaskName = 'office_buddy_hydration_retry';
@@ -43,8 +48,7 @@ class BreakBackground {
     );
   }
 
-  @pragma('vm:entry-point')
-  static void callbackDispatcher() {
+  static void executeTask() {
     Workmanager().executeTask((task, inputData) async {
       WidgetsFlutterBinding.ensureInitialized();
       await FirebaseBootstrap.initialize();

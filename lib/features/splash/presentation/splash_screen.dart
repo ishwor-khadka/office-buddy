@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:office_buddy/constants/asset_source.dart';
 import 'dart:math' as math;
 import 'dart:async';
 
@@ -214,7 +215,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                                 child: ClipOval(
                                   child: Image.asset(
-                                    'assets/app_logo.png',
+                                    AssetSource.appLogo,
                                     fit: BoxFit.cover,
                                     errorBuilder:
                                         (context, error, stackTrace) =>

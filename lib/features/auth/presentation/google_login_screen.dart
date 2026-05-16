@@ -160,7 +160,7 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
                         padding: const EdgeInsets.all(16),
                         child: ClipOval(
                           child: Image.asset(
-                            'assets/app_logo.png',
+                            AssetSource.appLogo,
                             fit: BoxFit.cover,
                           ),
                         ),

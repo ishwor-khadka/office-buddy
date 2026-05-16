@@ -7,6 +7,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:office_buddy/constants/asset_source.dart';
 
 import '../../../core/data/database_helper.dart';
 import '../../../core/exercises/exercise.dart';
@@ -14,7 +15,6 @@ import '../../../core/exercises/exercise_repository.dart';
 import '../../exercises/presentation/exercise_detail_screen.dart';
 import '../../../core/posture/posture_classifier.dart';
 import '../../../core/tracking/tracking_repository.dart';
-import '../../../core/ui/ui_refresh_bus.dart';
 
 class PostureScreen extends StatefulWidget {
   const PostureScreen({super.key});
@@ -27,12 +27,10 @@ enum _PostureUiState { intro, scanning, result }
 
 class _PostureScreenState extends State<PostureScreen>
     with SingleTickerProviderStateMixin {
-  static const _introImageUrl =
-      'https://www.figma.com/api/mcp/asset/cb146a83-a0d3-422d-803a-33e3074a271f';
-
   CameraController? _cameraController;
   PoseDetector? _poseDetector;
   late final AnimationController _scanLineController;
+  final ValueNotifier<int> _refreshTick = ValueNotifier<int>(0);
   Timer? _progressTimer;
 
   _PostureUiState _uiState = _PostureUiState.intro;
@@ -61,13 +59,19 @@ class _PostureScreenState extends State<PostureScreen>
     )..repeat();
   }
 
+  void _refresh(VoidCallback update) {
+    if (!mounted) return;
+    update();
+    _refreshTick.value++;
+  }
+
   Future<void> _ensureCameraReady() async {
     if (_cameraController?.value.isInitialized == true ||
         _isInitializingCamera) {
       return;
     }
 
-    UiRefreshBus.instance.update(this, () {
+    _refresh(() {
       _isInitializingCamera = true;
       _cameraError = null;
     });
@@ -75,12 +79,9 @@ class _PostureScreenState extends State<PostureScreen>
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        if (mounted) {
-          UiRefreshBus.instance.update(
-            this,
-            () => _cameraError = 'No camera available on this device.',
-          );
-        }
+        _refresh(() {
+          _cameraError = 'No camera available on this device.';
+        });
         return;
       }
 
@@ -99,23 +100,20 @@ class _PostureScreenState extends State<PostureScreen>
         await controller.dispose();
         return;
       }
-      UiRefreshBus.instance.update(this, () => _cameraController = controller);
+      _refresh(() => _cameraController = controller);
     } catch (e) {
-      if (mounted) {
-        UiRefreshBus.instance.update(
-          this,
-          () => _cameraError = 'Camera init failed: $e',
-        );
-      }
+      _refresh(() {
+        _cameraError = 'Camera init failed: $e';
+      });
     } finally {
       if (mounted) {
-        UiRefreshBus.instance.update(this, () => _isInitializingCamera = false);
+        _refresh(() => _isInitializingCamera = false);
       }
     }
   }
 
   Future<void> _startCameraScan() async {
-    UiRefreshBus.instance.update(this, () {
+    _refresh(() {
       _uiState = _PostureUiState.scanning;
       _statusMessage = 'Preparing scan...';
       _capturedImageBytes = null;
@@ -135,7 +133,7 @@ class _PostureScreenState extends State<PostureScreen>
     _scanProgress = 0.08;
     _progressTimer = Timer.periodic(const Duration(milliseconds: 120), (_) {
       if (!mounted || !_isProcessing) return;
-      UiRefreshBus.instance.update(this, () {
+      _refresh(() {
         _scanProgress = (_scanProgress + 0.012).clamp(0.08, 0.92);
       });
     });
@@ -178,7 +176,7 @@ class _PostureScreenState extends State<PostureScreen>
     if (controller == null || detector == null) return;
     if (!controller.value.isInitialized) return;
 
-    UiRefreshBus.instance.update(this, () {
+    _refresh(() {
       _isProcessing = true;
       _statusMessage = 'Analyzing alignment...';
       _scanProgress = 0.08;
@@ -192,10 +190,7 @@ class _PostureScreenState extends State<PostureScreen>
       final picture = await controller.takePicture();
       final capturedBytes = await picture.readAsBytes();
       if (mounted) {
-        UiRefreshBus.instance.update(
-          this,
-          () => _capturedImageBytes = capturedBytes,
-        );
+        _refresh(() => _capturedImageBytes = capturedBytes);
       }
 
       final image = InputImage.fromFilePath(picture.path);
@@ -219,7 +214,7 @@ class _PostureScreenState extends State<PostureScreen>
       }
 
       if (!mounted) return;
-      UiRefreshBus.instance.update(this, () {
+      _refresh(() {
         _isProcessing = false;
         _scanProgress = 1.0;
         _lastClassification = classification;
@@ -230,7 +225,7 @@ class _PostureScreenState extends State<PostureScreen>
       });
     } catch (e) {
       if (!mounted) return;
-      UiRefreshBus.instance.update(this, () {
+      _refresh(() {
         _isProcessing = false;
         _scanProgress = 0.08;
         _cameraError = 'Analysis failed. Please try again.';
@@ -241,7 +236,7 @@ class _PostureScreenState extends State<PostureScreen>
   }
 
   Future<void> _rescan() async {
-    UiRefreshBus.instance.update(this, () {
+    _refresh(() {
       _uiState = _PostureUiState.scanning;
       _capturedImageBytes = null;
       _cameraError = null;
@@ -354,6 +349,7 @@ class _PostureScreenState extends State<PostureScreen>
   @override
   void dispose() {
     _progressTimer?.cancel();
+    _refreshTick.dispose();
     _scanLineController.dispose();
     _cameraController?.dispose();
     _poseDetector?.close();
@@ -671,8 +667,8 @@ class _PostureScreenState extends State<PostureScreen>
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Image.network(
-                            _introImageUrl,
+                          Image.asset(
+                            AssetSource.postureImg,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
                                 Container(
@@ -1284,11 +1280,16 @@ class _PostureScreenState extends State<PostureScreen>
 
   @override
   Widget build(BuildContext context) {
-    return switch (_uiState) {
-      _PostureUiState.intro => _buildIntroView(context),
-      _PostureUiState.scanning => _buildScanningView(context),
-      _PostureUiState.result => _buildResultView(context),
-    };
+    return ValueListenableBuilder<int>(
+      valueListenable: _refreshTick,
+      builder: (context, _, child) {
+        return switch (_uiState) {
+          _PostureUiState.intro => _buildIntroView(context),
+          _PostureUiState.scanning => _buildScanningView(context),
+          _PostureUiState.result => _buildResultView(context),
+        };
+      },
+    );
   }
 }
 

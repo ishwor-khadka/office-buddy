@@ -8,6 +8,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'dart:ui';
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:office_buddy/constants/asset_source.dart' as source;
 
 import '../../../core/tracking/tracking_repository.dart';
 import '../../../core/audio/birds_audio.dart';
@@ -164,9 +165,7 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
 
     _audioErrorShown = true;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Could not play birds sound. Check assets/birds.mp3.'),
-      ),
+      const SnackBar(content: Text('Could not play birds sound.')),
     );
   }
 
@@ -233,7 +232,7 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
             Positioned.fill(
               child: IgnorePointer(
                 child: Lottie.asset(
-                  'assets/Confetti Burst.json',
+                  source.AssetSource.confrttirBrustJson,
                   repeat: true,
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => const SizedBox.shrink(),
@@ -256,7 +255,11 @@ class _StressReliefScreenState extends ConsumerState<StressReliefScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset('assets/energy.png', width: 80, height: 80)
+                        Image.asset(
+                              source.AssetSource.energyImg,
+                              width: 80,
+                              height: 80,
+                            )
                             .animate(onPlay: (c) => c.repeat())
                             .shimmer(duration: 2.seconds)
                             .scaleXY(begin: 0.9, end: 1.1, duration: 1.seconds)

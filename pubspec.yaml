@@ -73,14 +73,16 @@ flutter:
 
   assets:
     - assets/
+    - assets/exercises.json
     - assets/google_icon.svg
+    - assets/posture_img.jpeg
     - assets/app_logo.png
     - assets/energy.png
     - assets/breath.json
     - assets/birds.mp3
-    - "assets/Meditating Man.gif"
-    - "assets/Meditation - Work Stress Relief.json"
-    - "assets/Confetti Burst.json"
+    - assets/meditating_man.gif
+    - assets/meditation_work_stress_relief.json
+    - assets/confetti_burst.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
