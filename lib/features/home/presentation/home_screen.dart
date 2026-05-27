@@ -147,8 +147,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     },
                                   ),
                                 ),
-                                StaggeredGridTile.fit(
+                                StaggeredGridTile.count(
                                   crossAxisCellCount: 1,
+                                  mainAxisCellCount: 1.15,
                                   child: _FeatureCard(
                                     title: 'Movement',
                                     subtitle: 'Stretch & walk',
@@ -167,8 +168,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     },
                                   ),
                                 ),
-                                StaggeredGridTile.fit(
+                                StaggeredGridTile.count(
                                   crossAxisCellCount: 1,
+                                  mainAxisCellCount: 0.95,
                                   child: _FeatureCard(
                                     title: 'Finance\nTracker',
                                     subtitle: 'Review expenses',
@@ -180,6 +182,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                     shadowColor: const Color(0xFFFF3D6E),
                                     onTap: () =>
                                         context.push(AppRoutes.financeScreen),
+                                  ),
+                                ),
+                                StaggeredGridTile.fit(
+                                  crossAxisCellCount: 2,
+                                  child: _FeatureCard(
+                                    title: 'Hydration',
+                                    subtitle: 'Track your water intake',
+                                    icon: LucideIcons.droplets,
+                                    gradient: const [
+                                      Color(0xFF38BDF8),
+                                      Color(0xFF0EA5E9),
+                                    ],
+                                    shadowColor: const Color(0xFF0EA5E9),
+                                    onTap: () =>
+                                        context.push(AppRoutes.hydrationScreen),
                                   ),
                                 ),
                               ],
@@ -242,55 +259,58 @@ class _HomeHeader extends StatelessWidget {
     return Row(
       children: [
         // Avatar with progress ring
-        SizedBox(
-          width: 60,
-          height: 60,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Progress ring
-              // SizedBox(
-              //   width: 60,
-              //   height: 60,
-              //   child: CustomPaint(
-              //     painter: _ProgressRingPainter(
-              //       progress: 0.75,
-              //       strokeWidth: 3,
-              //       backgroundColor: Colors.grey.shade200,
-              //       progressColor: const Color(0xFF5B8CFF),
-              //     ),
-              //   ),
-              // ),
-              // Avatar
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: Colors.white, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+        GestureDetector(
+          onTap: () => context.push(AppRoutes.accountScreen),
+          child: SizedBox(
+            width: 60,
+            height: 60,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Progress ring
+                // SizedBox(
+                //   width: 60,
+                //   height: 60,
+                //   child: CustomPaint(
+                //     painter: _ProgressRingPainter(
+                //       progress: 0.75,
+                //       strokeWidth: 3,
+                //       backgroundColor: Colors.grey.shade200,
+                //       progressColor: const Color(0xFF5B8CFF),
+                //     ),
+                //   ),
+                // ),
+                // Avatar
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: photoUrl == null
+                        ? _fallbackAvatar()
+                        : Image.network(
+                            photoUrl,
+                            width: 54,
+                            height: 54,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                _fallbackAvatar(),
+                          ),
+                  ),
                 ),
-                child: ClipOval(
-                  child: photoUrl == null
-                      ? _fallbackAvatar()
-                      : Image.network(
-                          photoUrl,
-                          width: 54,
-                          height: 54,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _fallbackAvatar(),
-                        ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -417,7 +437,8 @@ class _MotivationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      quote?.text ?? "Take care of your body. It's the only place you have to live.",
+                      quote?.text ??
+                          "Take care of your body. It's the only place you have to live.",
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: const Color(0xFF1E2939),
                         fontWeight: FontWeight.w700,
