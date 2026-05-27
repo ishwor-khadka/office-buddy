@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
+import '../../../core/motivation/motivation_quote.dart';
+import '../../../core/motivation/motivation_repository.dart';
 import '../../../core/router/app_routes.dart';
 import '../../../core/ui/ob_background.dart';
 import '../../breaks/presentation/break_screen.dart';
@@ -21,6 +23,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ValueNotifier<int> _refreshTick = ValueNotifier<int>(0);
   bool _showMotivation = true;
+  MotivationQuote? _activeQuote;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchQuote();
+  }
+
+  Future<void> _fetchQuote() async {
+    final quotes = await MotivationRepository.fetchActiveQuotes();
+    if (!mounted || quotes.isEmpty) return;
+    quotes.shuffle();
+    _refresh(() => _activeQuote = quotes.first);
+  }
 
   @override
   void dispose() {
@@ -66,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _MotivationCard(
                                 onDismiss: () =>
                                     _refresh(() => _showMotivation = false),
+                                quote: _activeQuote,
                               )
                               .animate()
                               .fade(delay: 80.ms, duration: 320.ms)
@@ -337,9 +354,10 @@ class _HomeHeader extends StatelessWidget {
 }
 
 class _MotivationCard extends StatelessWidget {
-  const _MotivationCard({required this.onDismiss});
+  const _MotivationCard({required this.onDismiss, this.quote});
 
   final VoidCallback onDismiss;
+  final MotivationQuote? quote;
 
   @override
   Widget build(BuildContext context) {
@@ -399,7 +417,7 @@ class _MotivationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Take care of your body. It's the only place you have to live.",
+                      quote?.text ?? "Take care of your body. It's the only place you have to live.",
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: const Color(0xFF1E2939),
                         fontWeight: FontWeight.w700,
@@ -410,7 +428,7 @@ class _MotivationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '— Jim Rohn',
+                      '— ${quote?.author.isNotEmpty == true ? quote!.author : 'Jim Rohn'}',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: const Color(0xFF99A1AF),
                         fontWeight: FontWeight.w600,

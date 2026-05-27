@@ -63,6 +63,10 @@ service cloud.firestore {
         && data.createdAt is int;
     }
 
+    match /motivational_quotes/{quoteId} {
+      allow read, write: if true;
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId);
 
