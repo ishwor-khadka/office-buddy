@@ -48,3 +48,4 @@ app.*.map.json
 admin/
 admin/index.html
 firestore.rules
+firestore.json 
