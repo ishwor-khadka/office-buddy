@@ -40,9 +40,11 @@ class _PostureScreenState extends State<PostureScreen>
   bool _isProcessing = false;
   bool _isInitializingCamera = false;
   double _scanProgress = 0.08;
-  String _statusMessage = 'Preparing scan...';
 
   PostureClassification? _lastClassification;
+
+  List<CameraDescription> _availableCameras = [];
+  int _selectedCameraIndex = 0;
 
   @override
   void initState() {
@@ -77,21 +79,21 @@ class _PostureScreenState extends State<PostureScreen>
     });
 
     try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        _refresh(() {
-          _cameraError = 'No camera available on this device.';
-        });
+      if (_availableCameras.isEmpty) {
+        _availableCameras = await availableCameras();
+        final frontIdx = _availableCameras.indexWhere(
+          (cam) => cam.lensDirection == CameraLensDirection.front,
+        );
+        _selectedCameraIndex = frontIdx != -1 ? frontIdx : 0;
+      }
+
+      if (_availableCameras.isEmpty) {
+        _refresh(() => _cameraError = 'No camera available on this device.');
         return;
       }
 
-      final frontCamera = cameras.firstWhere(
-        (cam) => cam.lensDirection == CameraLensDirection.front,
-        orElse: () => cameras.first,
-      );
-
       final controller = CameraController(
-        frontCamera,
+        _availableCameras[_selectedCameraIndex],
         ResolutionPreset.medium,
         enableAudio: false,
       );
@@ -112,20 +114,49 @@ class _PostureScreenState extends State<PostureScreen>
     }
   }
 
+  Future<void> _switchCamera() async {
+    if (_availableCameras.length < 2 || _isProcessing || _isInitializingCamera) {
+      return;
+    }
+
+    final oldController = _cameraController;
+    _refresh(() {
+      _cameraController = null;
+      _isInitializingCamera = true;
+      _cameraError = null;
+    });
+    await oldController?.dispose();
+
+    _selectedCameraIndex = (_selectedCameraIndex + 1) % _availableCameras.length;
+
+    try {
+      final controller = CameraController(
+        _availableCameras[_selectedCameraIndex],
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      await controller.initialize();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      _refresh(() => _cameraController = controller);
+    } catch (e) {
+      _refresh(() => _cameraError = 'Camera switch failed: $e');
+    } finally {
+      if (mounted) _refresh(() => _isInitializingCamera = false);
+    }
+  }
+
   Future<void> _startCameraScan() async {
     _refresh(() {
       _uiState = _PostureUiState.scanning;
-      _statusMessage = 'Preparing scan...';
       _capturedImageBytes = null;
       _lastClassification = null;
       _cameraError = null;
     });
 
     await _ensureCameraReady();
-    if (!mounted) return;
-    if (_cameraController?.value.isInitialized != true) return;
-
-    await _runPostureAnalysis();
   }
 
   void _startProgressSimulation() {
@@ -178,7 +209,6 @@ class _PostureScreenState extends State<PostureScreen>
 
     _refresh(() {
       _isProcessing = true;
-      _statusMessage = 'Analyzing alignment...';
       _scanProgress = 0.08;
       _cameraError = null;
     });
@@ -197,13 +227,24 @@ class _PostureScreenState extends State<PostureScreen>
       final poses = await detector.processImage(image);
       final pose = poses.isNotEmpty ? poses.first : null;
 
-      final classification = pose == null
-          ? const PostureClassification(
-              result: PostureResult.needsCorrection,
-              issueType: PostureIssueType.none,
-              confidenceNote: 'No body landmarks detected.',
-            )
-          : PostureClassifier.classify(pose);
+      if (pose == null) {
+        if (!mounted) return;
+        _refresh(() {
+          _isProcessing = false;
+          _scanProgress = 0.08;
+          _capturedImageBytes = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No person detected. Position yourself in frame and try again.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final classification = PostureClassifier.classify(pose);
 
       await _persistClassification(classification);
 
@@ -218,9 +259,6 @@ class _PostureScreenState extends State<PostureScreen>
         _isProcessing = false;
         _scanProgress = 1.0;
         _lastClassification = classification;
-        _statusMessage = pose == null
-            ? 'No posture detected. Move into frame and retry.'
-            : PostureClassifier.issueLabel(classification.issueType);
         _uiState = _PostureUiState.result;
       });
     } catch (e) {
@@ -243,9 +281,6 @@ class _PostureScreenState extends State<PostureScreen>
       _lastClassification = null;
     });
     await _ensureCameraReady();
-    if (!mounted) return;
-    if (_cameraController?.value.isInitialized != true) return;
-    await _runPostureAnalysis();
   }
 
   Future<List<Exercise>> _getSuggestedExercises(
@@ -843,8 +878,15 @@ class _PostureScreenState extends State<PostureScreen>
             right: 16,
             top: MediaQuery.of(context).padding.top + 12,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                if (_availableCameras.length >= 2 && !_isProcessing)
+                  _RoundOverlayButton(
+                    icon: Icons.flip_camera_ios_rounded,
+                    onTap: _switchCamera,
+                  )
+                else
+                  const SizedBox(width: 48),
                 _RoundOverlayButton(
                   icon: LucideIcons.x,
                   onTap: () => Navigator.of(context).pop(),
@@ -852,127 +894,185 @@ class _PostureScreenState extends State<PostureScreen>
               ],
             ),
           ),
-          AnimatedBuilder(
-            animation: _scanLineController,
-            builder: (context, child) {
-              final y = lerpDouble(-1, 1, _scanLineController.value) ?? 0;
-              return Align(
-                alignment: Alignment(0, y),
-                child: IgnorePointer(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    height: 4,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          const Color(0xFF00C950).withValues(alpha: 0.88),
-                          Colors.transparent,
+          if (_isProcessing)
+            AnimatedBuilder(
+              animation: _scanLineController,
+              builder: (context, child) {
+                final y = lerpDouble(-1, 1, _scanLineController.value) ?? 0;
+                return Align(
+                  alignment: Alignment(0, y),
+                  child: IgnorePointer(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      height: 4,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            const Color(0xFF00C950).withValues(alpha: 0.88),
+                            Colors.transparent,
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF22C55E,
+                            ).withValues(alpha: 0.45),
+                            blurRadius: 22,
+                            spreadRadius: 1.5,
+                          ),
                         ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF22C55E,
-                          ).withValues(alpha: 0.45),
-                          blurRadius: 22,
-                          spreadRadius: 1.5,
+                    ),
+                  ),
+                );
+              },
+            ),
+          if (_isProcessing || _capturedImageBytes != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 26,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'SYSTEM STATUS',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: const Color(0xFF62748E),
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'SCAN_ACTIVE',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: const Color(0xFF00A63E),
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 26,
-                    offset: const Offset(0, 14),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'SYSTEM STATUS',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: const Color(0xFF62748E),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        _isProcessing ? 'SCAN_ACTIVE' : 'COMPLETE',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: const Color(0xFF00A63E),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDCFCE7),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Icon(
-                          Icons.track_changes_rounded,
-                          color: Color(0xFF00A63E),
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          _isProcessing
-                              ? 'Analyzing alignment...'
-                              : _statusMessage,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: const Color(0xFF0F172B),
-                            fontWeight: FontWeight.w700,
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Icon(
+                            Icons.track_changes_rounded,
+                            color: Color(0xFF00A63E),
+                            size: 24,
                           ),
                         ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Text(
+                            'Analyzing alignment...',
+                            style: TextStyle(
+                              color: Color(0xFF0F172B),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: _scanProgress,
+                        minHeight: 8,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        valueColor: const AlwaysStoppedAnimation(
+                          Color(0xFF00A63E),
+                        ),
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 36,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Position yourself in frame, then tap to capture',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 14,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: _isProcessing ? _scanProgress : 1,
-                      minHeight: 8,
-                      backgroundColor: const Color(0xFFE2E8F0),
-                      valueColor: const AlwaysStoppedAnimation(
-                        Color(0xFF00A63E),
+                  const SizedBox(height: 24),
+                  GestureDetector(
+                    onTap: _cameraController?.value.isInitialized == true
+                        ? _runPostureAnalysis
+                        : null,
+                    child: Container(
+                      width: 78,
+                      height: 78,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _cameraController?.value.isInitialized == true
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.4),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
         ],
       ),
     );

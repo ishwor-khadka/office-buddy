@@ -1,7 +1,7 @@
 class AssetSource {
   const AssetSource._();
   static const String googleIcon = "assets/google_icon.svg";
-  static const String appLogo = " assets/app_logo.png";
+  static const String appLogo = "assets/app_logo.png";
   static const String postureImg = "assets/posture_img.jpeg";
   static const String energyImg = "assets/energy.png";
   static const String birdMp3 = "assets/birds.mp3";

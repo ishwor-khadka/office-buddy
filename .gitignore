@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Admin panel & Firestore rules (local only)
+admin/
+admin/index.html
+firestore.rules
+firebase.json 
