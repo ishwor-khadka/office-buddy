@@ -23,15 +23,27 @@ class CategoryNotifier extends Notifier<String> {
   }
 }
 
+Color _bodyPartColor(String bodyPart) => switch (bodyPart) {
+  'Neck' => ObTokens.iris,
+  'Back' => ObTokens.mintDeep,
+  'Wrist' => ObTokens.sky,
+  'Eyes' => const Color(0xFFF59E0B),
+  _ => ObTokens.iris,
+};
+
+IconData _bodyPartIcon(String bodyPart) => switch (bodyPart) {
+  'Neck' => LucideIcons.alignCenterVertical,
+  'Back' => LucideIcons.moveVertical,
+  'Wrist' => LucideIcons.hand,
+  'Eyes' => LucideIcons.eye,
+  _ => LucideIcons.dumbbell,
+};
+
 class ExercisesScreen extends ConsumerWidget {
   const ExercisesScreen({super.key});
 
-  static const _navSelectedColor = Color(0xFF00B78B);
-  static const _navUnselectedColor = Color(0xFF94A3B8);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final allExercises = ref.watch(exercisesProvider);
     final selectedCategory = ref.watch(selectedCategoryProvider);
     final favoritesAsync = ref.watch(favoritesProvider);
@@ -40,185 +52,353 @@ class ExercisesScreen extends ConsumerWidget {
       extendBodyBehindAppBar: true,
       appBar: AppBar(title: const Text('Exercise Library')),
       body: ObBackground(
-        child: SafeArea(
-          child: allExercises.when(
-            data: (items) {
-              final favorites = favoritesAsync.asData?.value ?? <String>{};
-              final filtered = selectedCategory == 'All'
-                  ? items
-                  : items.where((e) => e.bodyPart == selectedCategory).toList();
-
-              final quickAccess = items
-                  .where((e) => favorites.contains(e.id))
-                  .toList();
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
+        child: Stack(
+          children: [
+            Positioned(
+              top: -50,
+              right: -40,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ObTokens.iris.withValues(alpha: 0.15),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ObGlass(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
+              ),
+            ),
+            Positioned(
+              bottom: 100,
+              left: -50,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ObTokens.mintDeep.withValues(alpha: 0.15),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: allExercises.when(
+                data: (items) {
+                  final favorites = favoritesAsync.asData?.value ?? <String>{};
+                  final filtered = selectedCategory == 'All'
+                      ? items
+                      : items
+                            .where((e) => e.bodyPart == selectedCategory)
+                            .toList();
+                  final quickAccess = items
+                      .where((e) => favorites.contains(e.id))
+                      .toList();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: _CategoryStrip(
+                          selected: selectedCategory,
+                          onSelect: (cat) => ref
+                              .read(selectedCategoryProvider.notifier)
+                              .setCategory(cat),
+                        ).animate().fade(duration: 280.ms).slideY(begin: -0.04),
                       ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: ['All', 'Neck', 'Back', 'Wrist', 'Eyes']
-                              .map((cat) {
-                                final isSelected = selectedCategory == cat;
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: ChoiceChip(
-                                    label: Text(cat),
-                                    selected: isSelected,
-                                    onSelected: (val) {
-                                      ref
-                                          .read(
-                                            selectedCategoryProvider.notifier,
-                                          )
-                                          .setCategory(cat);
-                                    },
-                                    selectedColor: ObTokens.mint.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                    backgroundColor: Colors.transparent,
-                                    labelStyle: TextStyle(
-                                      color: isSelected
-                                          ? _navSelectedColor
-                                          : _navUnselectedColor,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                );
-                              })
-                              .toList(),
+                      if (quickAccess.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                          child: _SectionLabel(label: 'Quick Access'),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 88,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: quickAccess.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 10),
+                            itemBuilder: (context, index) {
+                              final ex = quickAccess[index];
+                              return _QuickAccessCard(
+                                exercise: ex,
+                                onTap: () => _openDetail(context, ex),
+                              );
+                            },
+                          ),
+                        ).animate().fade(duration: 320.ms, delay: 40.ms),
+                      ],
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                        child: _SectionLabel(
+                          label: selectedCategory == 'All'
+                              ? 'All Exercises'
+                              : '$selectedCategory Exercises',
                         ),
                       ),
-                    ).animate().fade().slideX(begin: 0.05),
-                    const SizedBox(height: 14),
-                    if (quickAccess.isNotEmpty) ...[
-                      Text('Quick Access', style: theme.textTheme.titleLarge),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 98,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: quickAccess.length,
-                          separatorBuilder: (_, index) =>
-                              const SizedBox(width: 10),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                          cacheExtent: 900,
+                          itemCount: filtered.length,
                           itemBuilder: (context, index) {
-                            final ex = quickAccess[index];
-                            return SizedBox(
-                              width: 210,
-                              child: ObGlass(
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(24),
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            ExerciseDetailScreen(exercise: ex),
-                                      ),
-                                    );
-                                  },
-                                  child: Row(
-                                    children: [
-                                      const Icon(LucideIcons.star),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          ex.title,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: theme.textTheme.titleMedium,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                            final exercise = filtered[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _ExerciseCard(
+                                exercise: exercise,
+                                isFavorite: favorites.contains(exercise.id),
+                                onTap: () => _openDetail(context, exercise),
+                                onFavoriteTap: () => ref
+                                    .read(favoritesProvider.notifier)
+                                    .toggle(exercise.id),
+                              ).animate(delay: (index * 30).ms).fade(
+                                duration: 260.ms,
                               ),
                             );
                           },
                         ),
                       ),
-                      const SizedBox(height: 14),
                     ],
-                    Expanded(
-                      child: ListView.builder(
-                        cacheExtent: 900,
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final exercise = filtered[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0),
-                            child: _buildExerciseCard(
-                              context,
-                              ref,
-                              exercise,
-                              favorites.contains(exercise.id),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Failed to load: $e')),
-          ),
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Failed to load: $e')),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildExerciseCard(
-    BuildContext context,
-    WidgetRef ref,
-    Exercise exercise,
-    bool isFavorite,
-  ) {
-    final theme = Theme.of(context);
-    final mins = (exercise.durationSeconds / 60).ceil();
+  void _openDetail(BuildContext context, Exercise exercise) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ExerciseDetailScreen(exercise: exercise),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    label,
+    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+      fontWeight: FontWeight.w700,
+      color: ObTokens.text,
+      letterSpacing: -0.2,
+    ),
+  );
+}
+
+class _CategoryStrip extends StatelessWidget {
+  const _CategoryStrip({required this.selected, required this.onSelect});
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  static const _categories = ['All', 'Neck', 'Back', 'Wrist', 'Eyes'];
+
+  @override
+  Widget build(BuildContext context) {
     return ObGlass(
-      padding: const EdgeInsets.all(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => ExerciseDetailScreen(exercise: exercise),
-            ),
-          );
-        },
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
         child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.colorScheme.primary.withValues(alpha: 0.9),
-                    theme.colorScheme.secondary.withValues(alpha: 0.85),
+          children: _categories.map((cat) {
+            final isSelected = selected == cat;
+            final color = cat == 'All' ? ObTokens.iris : _bodyPartColor(cat);
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => onSelect(cat),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? LinearGradient(
+                            colors: [
+                              color,
+                              color == ObTokens.iris
+                                  ? ObTokens.sky
+                                  : color.withValues(alpha: 0.7),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: isSelected ? null : Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.transparent
+                          : Colors.white.withValues(alpha: 0.6),
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (cat != 'All') ...[
+                        Icon(
+                          _bodyPartIcon(cat),
+                          size: 13,
+                          color: isSelected ? Colors.white : color,
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                      Text(
+                        cat,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : ObTokens.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickAccessCard extends StatelessWidget {
+  const _QuickAccessCard({required this.exercise, required this.onTap});
+  final Exercise exercise;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _bodyPartColor(exercise.bodyPart);
+    final mins = (exercise.durationSeconds / 60).ceil();
+
+    return SizedBox(
+      width: 200,
+      child: ObGlass(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(LucideIcons.star, color: color, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      exercise.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: ObTokens.text,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$mins min · ${exercise.bodyPart}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: ObTokens.textMuted,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              child: const Icon(LucideIcons.dumbbell, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExerciseCard extends StatelessWidget {
+  const _ExerciseCard({
+    required this.exercise,
+    required this.isFavorite,
+    required this.onTap,
+    required this.onFavoriteTap,
+  });
+
+  final Exercise exercise;
+  final bool isFavorite;
+  final VoidCallback onTap;
+  final VoidCallback onFavoriteTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = _bodyPartColor(exercise.bodyPart);
+    final mins = (exercise.durationSeconds / 60).ceil();
+    final isDifficultEasy = exercise.difficulty == 'Easy';
+
+    return ObGlass(
+      padding: const EdgeInsets.all(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    color.withValues(alpha: 0.85),
+                    color == ObTokens.iris ? ObTokens.sky : color,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(
+                _bodyPartIcon(exercise.bodyPart),
+                color: Colors.white,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -229,51 +409,99 @@ class ExercisesScreen extends ConsumerWidget {
                     exercise.title,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
+                      color: ObTokens.text,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(
-                        LucideIcons.tag,
-                        size: 14,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
-                        ),
+                      _Pill(label: exercise.bodyPart, color: color),
+                      const SizedBox(width: 6),
+                      _Pill(
+                        label: '$mins min',
+                        color: ObTokens.textMuted,
+                        icon: LucideIcons.clock,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        exercise.bodyPart,
-                        style: theme.textTheme.bodyMedium,
+                      _Pill(
+                        label: exercise.difficulty,
+                        color: isDifficultEasy
+                            ? ObTokens.mintDeep
+                            : const Color(0xFFF59E0B),
                       ),
-                      const SizedBox(width: 14),
-                      Icon(
-                        LucideIcons.clock,
-                        size: 14,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text('$mins min', style: theme.textTheme.bodyMedium),
                     ],
                   ),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: () =>
-                  ref.read(favoritesProvider.notifier).toggle(exercise.id),
-              icon: Icon(
-                isFavorite ? LucideIcons.star : LucideIcons.starOff,
-                color: isFavorite
-                    ? theme.colorScheme.secondary
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.55),
-              ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: onFavoriteTap,
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: isFavorite
+                          ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
+                          : Colors.white.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      isFavorite ? LucideIcons.star : LucideIcons.starOff,
+                      size: 16,
+                      color: isFavorite
+                          ? const Color(0xFFF59E0B)
+                          : ObTokens.textMuted,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Icon(
+                  LucideIcons.chevronRight,
+                  size: 16,
+                  color: ObTokens.textMuted,
+                ),
+              ],
             ),
-            const Icon(LucideIcons.chevronRight),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.color, this.icon});
+  final String label;
+  final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

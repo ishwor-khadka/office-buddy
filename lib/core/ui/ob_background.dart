@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'ob_tokens.dart';
 
 class ObBackground extends StatelessWidget {
   const ObBackground({super.key, required this.child});
@@ -11,12 +10,12 @@ class ObBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0.7, -0.55),
-          radius: 1.25,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            ObTokens.canvas,
-            ObTokens.canvasAlt,
+            Color(0xFFCEEDDA), // saturated mint
+            Color(0xFFE2DEFF), // saturated iris/lavender
           ],
         ),
       ),

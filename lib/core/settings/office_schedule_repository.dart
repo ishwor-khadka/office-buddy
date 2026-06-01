@@ -12,6 +12,8 @@ class OfficeScheduleRepository {
   static const _kStartMinutes = 'office_start_minutes';
   static const _kEndMinutes = 'office_end_minutes';
   static const _kOffDays = 'office_off_days';
+  static const _kLunchStartMinutes = 'office_lunch_start_minutes';
+  static const _kLunchEndMinutes = 'office_lunch_end_minutes';
   static const _firebaseTimeout = Duration(seconds: 3);
 
   Future<OfficeSchedule> load() async {
@@ -39,6 +41,8 @@ class OfficeScheduleRepository {
         workStartMinutes: start,
         workEndMinutes: end,
         offDays: offDaysRaw.map(int.parse).toList(growable: false),
+        lunchStartMinutes: prefs.getInt(_kLunchStartMinutes),
+        lunchEndMinutes: prefs.getInt(_kLunchEndMinutes),
       );
     } catch (_) {
       return null;
@@ -140,6 +144,16 @@ class OfficeScheduleRepository {
       _kOffDays,
       schedule.offDays.map((day) => day.toString()).toList(growable: false),
     );
+    if (schedule.lunchStartMinutes != null) {
+      await prefs.setInt(_kLunchStartMinutes, schedule.lunchStartMinutes!);
+    } else {
+      await prefs.remove(_kLunchStartMinutes);
+    }
+    if (schedule.lunchEndMinutes != null) {
+      await prefs.setInt(_kLunchEndMinutes, schedule.lunchEndMinutes!);
+    } else {
+      await prefs.remove(_kLunchEndMinutes);
+    }
   }
 
   Future<void> saveToFirebase(OfficeSchedule schedule) async {

@@ -202,6 +202,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
       valueListenable: _tabRefreshTick,
       builder: (context, _, child) {
         return Scaffold(
+          extendBody: true,
           body: _screens[_currentIndex],
           bottomNavigationBar: ObBottomBar(
             currentIndex: _currentIndex,

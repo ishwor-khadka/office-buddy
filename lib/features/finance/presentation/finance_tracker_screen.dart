@@ -13,6 +13,8 @@ import '../../../core/finance/money_formatter.dart';
 import '../../../core/settings/currency_preference.dart';
 import '../../../core/settings/currency_preference_repository.dart';
 import '../../../core/ui/ob_background.dart';
+import '../../../core/ui/ob_glass.dart';
+import '../../../core/ui/ob_tokens.dart';
 
 class FinanceTrackerScreen extends StatefulWidget {
   const FinanceTrackerScreen({super.key});
@@ -101,189 +103,256 @@ class _FinanceTrackerScreenState extends State<FinanceTrackerScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      floatingActionButton: InkWell(
+      extendBodyBehindAppBar: true,
+      floatingActionButton: _GradientFab(
         onTap: () => _showAddNewDialog(context),
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [Color(0xFF63C5F4), Color(0xFF9B7BFF)],
-            ),
-          ),
-          child: const Icon(Icons.add, color: Colors.white, size: 30),
-        ),
       ),
-      backgroundColor: const Color(0xFFE8E8E8),
       body: ObBackground(
-        child: SafeArea(
-          child: FutureBuilder<FinanceSummaryRecord>(
-            future: _summaryFuture,
-            builder: (context, snapshot) {
-              final summary = snapshot.data ?? FinanceSummaryRecord.empty();
+        child: Stack(
+          children: [
+            Positioned(
+              top: -40,
+              right: -60,
+              child: _Blob(
+                color: ObTokens.iris.withValues(alpha: 0.15),
+                size: 280,
+              ),
+            ),
+            Positioned(
+              bottom: 120,
+              left: -50,
+              child: _Blob(
+                color: ObTokens.sky.withValues(alpha: 0.18),
+                size: 240,
+              ),
+            ),
+            SafeArea(
+              child: FutureBuilder<FinanceSummaryRecord>(
+                future: _summaryFuture,
+                builder: (context, snapshot) {
+                  final summary = snapshot.data ?? FinanceSummaryRecord.empty();
 
-              return FutureBuilder<CurrencyPreference>(
-                future: _currencyFuture,
-                builder: (context, currencySnapshot) {
-                  final currency =
-                      currencySnapshot.data ??
-                      CurrencyPreference.defaultPreference;
+                  return FutureBuilder<CurrencyPreference>(
+                    future: _currencyFuture,
+                    builder: (context, currencySnapshot) {
+                      final currency =
+                          currencySnapshot.data ??
+                          CurrencyPreference.defaultPreference;
 
-                  return FutureBuilder<List<FinanceExpenseRecord>>(
-                    future: _expensesFuture,
-                    builder: (context, expensesSnapshot) {
-                      final expenses =
-                          expensesSnapshot.data ??
-                          const <FinanceExpenseRecord>[];
+                      return FutureBuilder<List<FinanceExpenseRecord>>(
+                        future: _expensesFuture,
+                        builder: (context, expensesSnapshot) {
+                          final expenses =
+                              expensesSnapshot.data ??
+                              const <FinanceExpenseRecord>[];
+                          final loading =
+                              snapshot.connectionState ==
+                                  ConnectionState.waiting ||
+                              expensesSnapshot.connectionState ==
+                                  ConnectionState.waiting;
 
-                      return Center(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 430),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF7F7F7),
-                                borderRadius: BorderRadius.circular(28),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 34,
-                                    offset: const Offset(0, 18),
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(18, 8, 18, 100),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _Header()
+                                    .animate()
+                                    .fade(duration: 250.ms)
+                                    .slideY(begin: -0.04),
+                                const SizedBox(height: 16),
+                                _TodayExpenseCard(
+                                  amount: summary.todayExpenseAmount,
+                                ).animate().fade(duration: 300.ms).slideY(
+                                  begin: 0.05,
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _BalanceCard.owe(
+                                        summary.oweTotal,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _BalanceCard.get(
+                                        summary.getTotal,
+                                      ),
+                                    ),
+                                  ],
+                                ).animate().fade(duration: 320.ms, delay: 60.ms),
+                                if (expenses.isNotEmpty) ...[
+                                  const SizedBox(height: 20),
+                                  _SectionLabel(label: 'Recent Expenses'),
+                                  const SizedBox(height: 10),
+                                  ObGlass(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      children: expenses
+                                          .map(
+                                            (expense) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8,
+                                              ),
+                                              child: _ExpenseTile(
+                                                category: expense.category,
+                                                description: expense.description,
+                                                dateLabel: expense.dateLabel,
+                                                amount: formatMoney(
+                                                  expense.amount,
+                                                  currency.symbol,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ),
+                                  ).animate().fade(
+                                    duration: 320.ms,
+                                    delay: 80.ms,
                                   ),
                                 ],
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  18,
-                                  18,
-                                  18,
-                                  26,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _Header()
-                                        .animate()
-                                        .fade(duration: 250.ms)
-                                        .slideY(begin: 0.04),
-                                    const SizedBox(height: 18),
-                                    _ExpenseCard(
-                                          amount: summary.todayExpenseAmount,
-                                        )
-                                        .animate()
-                                        .fade(duration: 280.ms)
-                                        .slideY(begin: 0.05),
-                                    const SizedBox(height: 16),
-                                    if (expenses.isNotEmpty) ...[
-                                      Text(
-                                        'Recent Expenses',
-                                        style: theme.textTheme.titleLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                              color: const Color(0xFF171B2C),
-                                            ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      ...expenses.map(
-                                        (expense) => Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 10,
-                                          ),
-                                          child: _ExpenseTile(
-                                            category: expense.category,
-                                            description: expense.description,
-                                            dateLabel: expense.dateLabel,
-                                            amount: formatMoney(
-                                              expense.amount,
-                                              currency.symbol,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                    ],
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _BalanceCard.owe(
-                                            summary.oweTotal,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _BalanceCard.get(
-                                            summary.getTotal,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 18),
-                                    Text(
-                                      'People',
-                                      style: theme.textTheme.titleLarge
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w800,
-                                            color: const Color(0xFF171B2C),
-                                          ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    if (summary.people.isEmpty)
-                                      Padding(
+                                const SizedBox(height: 20),
+                                _SectionLabel(label: 'People'),
+                                const SizedBox(height: 10),
+                                if (summary.people.isEmpty)
+                                  ObGlass(
+                                    child: Center(
+                                      child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                          vertical: 24,
+                                          vertical: 20,
                                         ),
-                                        child: Center(
-                                          child: Text(
-                                            'No borrow/lend records yet.',
-                                            style: theme.textTheme.bodyMedium,
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      ...summary.people.map(
-                                        (person) => Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 12,
-                                          ),
-                                          child: _PersonTile(
-                                            person: _Person.fromRecord(person),
-                                            onTap: () => context.push(
-                                              AppRoutes.financePersonScreen,
-                                              extra:
-                                                  FinancePersonDetailsArgs.fromRecord(
-                                                    person,
-                                                  ),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              LucideIcons.users,
+                                              size: 32,
+                                              color: ObTokens.textMuted,
                                             ),
-                                          ),
+                                            const SizedBox(height: 10),
+                                            Text(
+                                              'No borrow/lend records yet.',
+                                              style: theme.textTheme.bodyMedium,
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    if (snapshot.connectionState ==
-                                            ConnectionState.waiting ||
-                                        expensesSnapshot.connectionState ==
-                                            ConnectionState.waiting)
-                                      const Padding(
-                                        padding: EdgeInsets.only(top: 12),
-                                        child: Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
+                                    ),
+                                  ).animate().fade(
+                                    duration: 320.ms,
+                                    delay: 100.ms,
+                                  )
+                                else
+                                  ObGlass(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      children: summary.people
+                                          .map(
+                                            (person) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8,
+                                              ),
+                                              child: _PersonTile(
+                                                person: _Person.fromRecord(
+                                                  person,
+                                                ),
+                                                onTap: () => context.push(
+                                                  AppRoutes.financePersonScreen,
+                                                  extra: FinancePersonDetailsArgs
+                                                      .fromRecord(person),
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ),
+                                  ).animate().fade(
+                                    duration: 320.ms,
+                                    delay: 100.ms,
+                                  ),
+                                if (loading)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 16),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       );
                     },
                   );
                 },
-              );
-            },
-          ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _Blob extends StatelessWidget {
+  const _Blob({required this.color, required this.size});
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+  );
+}
+
+class _GradientFab extends StatelessWidget {
+  const _GradientFab({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [ObTokens.sky, ObTokens.iris],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x557C6BFF),
+              blurRadius: 18,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: const Icon(LucideIcons.plus, color: Colors.white, size: 26),
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: ObTokens.text,
+        letterSpacing: -0.2,
       ),
     );
   }
@@ -297,38 +366,46 @@ class _Header extends StatelessWidget {
       children: [
         InkWell(
           onTap: () => Navigator.pop(context),
+          borderRadius: BorderRadius.circular(14),
           child: Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
             ),
-            child: const Icon(Icons.arrow_back, color: Colors.black, size: 20),
+            child: const Icon(
+              LucideIcons.arrowLeft,
+              color: ObTokens.text,
+              size: 18,
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: const LinearGradient(
+              colors: [ObTokens.sky, ObTokens.iris],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: const Icon(
+            LucideIcons.walletCards,
+            color: Colors.white,
+            size: 18,
           ),
         ),
         const SizedBox(width: 12),
-        // Container(
-        //   width: 40,
-        //   height: 40,
-        //   decoration: const BoxDecoration(
-        //     shape: BoxShape.circle,
-        //     gradient: LinearGradient(
-        //       colors: [Color(0xFF58B4F7), Color(0xFF7F69FF)],
-        //     ),
-        //   ),
-        //   child: const Icon(
-        //     LucideIcons.walletCards,
-        //     color: Colors.white,
-        //     size: 20,
-        //   ),
-        // ),
-        // const SizedBox(width: 12),
         Expanded(
           child: Text(
-            'Your Finance 👋',
+            'Your Finance',
             style: theme.textTheme.headlineSmall?.copyWith(
-              color: const Color(0xFF151B2A),
+              color: ObTokens.text,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.4,
             ),
@@ -339,74 +416,79 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _ExpenseCard extends StatelessWidget {
-  const _ExpenseCard({required this.amount});
-
+class _TodayExpenseCard extends StatelessWidget {
+  const _TodayExpenseCard({required this.amount});
   final String amount;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFD7EFFF), Color(0xFFF0E7FF), Color(0xFFE8FFF7)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+    return ObGlass(
+      tint: ObTokens.sky,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Today's Expense",
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: const Color(0xFF51607B),
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  LucideIcons.receipt,
+                  size: 16,
+                  color: ObTokens.text,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                "Today's Expense",
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: ObTokens.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             amount,
             style: theme.textTheme.displaySmall?.copyWith(
-              color: const Color(0xFF10182A),
+              color: ObTokens.text,
               fontWeight: FontWeight.w800,
               letterSpacing: -1.2,
             ),
           ),
           const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.9)),
+              color: Colors.white.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
             ),
             child: Column(
               children: [
                 SizedBox(
-                  height: 170,
+                  height: 160,
                   child: Stack(
                     alignment: Alignment.center,
-                    children: const [
-                      SizedBox.expand(child: _DonutChart()),
-                      SizedBox(
-                        width: 76,
-                        height: 76,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Color(0xFFF2FAF8),
-                          ),
+                    children: [
+                      const SizedBox.expand(child: _DonutChart()),
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 const _LegendRow(),
               ],
             ),
@@ -436,9 +518,9 @@ class _DonutPainter extends CustomPainter {
     const start = -math.pi / 2;
 
     final segments = <({double sweep, Color color})>[
-      (sweep: math.pi * 0.34, color: const Color(0xFF5EB7F6)),
-      (sweep: math.pi * 0.19, color: const Color(0xFFA78BFA)),
-      (sweep: math.pi * 0.22, color: const Color(0xFF65D1A6)),
+      (sweep: math.pi * 0.34, color: ObTokens.sky),
+      (sweep: math.pi * 0.19, color: ObTokens.iris),
+      (sweep: math.pi * 0.22, color: ObTokens.mintDeep),
       (sweep: math.pi * 0.15, color: const Color(0xFF7ED7CF)),
     ];
 
@@ -463,12 +545,12 @@ class _LegendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
-        _LegendItem(color: Color(0xFF5EB7F6), label: 'Food'),
-        _LegendItem(color: Color(0xFFA78BFA), label: 'Transport'),
-        _LegendItem(color: Color(0xFF65D1A6), label: 'Shopping'),
+      children: [
+        _LegendItem(color: ObTokens.sky, label: 'Food'),
+        _LegendItem(color: ObTokens.iris, label: 'Transport'),
+        _LegendItem(color: ObTokens.mintDeep, label: 'Shopping'),
         _LegendItem(color: Color(0xFF7ED7CF), label: 'Others'),
       ],
     );
@@ -477,26 +559,24 @@ class _LegendRow extends StatelessWidget {
 
 class _LegendItem extends StatelessWidget {
   const _LegendItem({required this.color, required this.label});
-
   final Color color;
   final String label;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: 8,
+          height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 5),
         Text(
           label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: const Color(0xFF465065),
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: ObTokens.textMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -518,7 +598,7 @@ class _BalanceCard extends StatelessWidget {
     : this._(
         title: 'You Owe',
         amount: amount,
-        tint: const Color(0xFFFFD6D6),
+        tint: const Color(0xFFFFEBEB),
         icon: LucideIcons.trendingDown,
         amountColor: const Color(0xFFE71D3D),
       );
@@ -527,10 +607,11 @@ class _BalanceCard extends StatelessWidget {
     : this._(
         title: "You'll Get",
         amount: amount,
-        tint: const Color(0xFFD7F8E6),
+        tint: const Color(0xFFE6F9F0),
         icon: LucideIcons.trendingUp,
         amountColor: const Color(0xFF0BA24D),
       );
+
   final String title;
   final String amount;
   final Color tint;
@@ -540,14 +621,9 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Container(
+    return ObGlass(
+      tint: tint,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: tint.withValues(alpha: 0.58),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: tint),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -556,11 +632,11 @@ class _BalanceCard extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: amountColor.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: amountColor, size: 18),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             title,
             style: theme.textTheme.labelLarge?.copyWith(
@@ -568,11 +644,11 @@ class _BalanceCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             amount,
             style: theme.textTheme.titleLarge?.copyWith(
-              color: const Color(0xFF1A2234),
+              color: ObTokens.text,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -599,28 +675,26 @@ class _ExpenseTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: Colors.white.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
       ),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFFEAF5FF),
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: ObTokens.sky.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.receipt_long, color: Color(0xFF4B98D8)),
+            child: Icon(
+              LucideIcons.receipt,
+              color: ObTokens.sky,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -631,17 +705,15 @@ class _ExpenseTile extends StatelessWidget {
                   category,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF171B2C),
+                    color: ObTokens.text,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   description.isEmpty
                       ? dateLabel
-                      : '$description  •  $dateLabel',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF667085),
-                  ),
+                      : '$description  ·  $dateLabel',
+                  style: theme.textTheme.bodyMedium,
                 ),
               ],
             ),
@@ -650,7 +722,7 @@ class _ExpenseTile extends StatelessWidget {
           Text(
             amount,
             style: theme.textTheme.titleMedium?.copyWith(
-              color: const Color(0xFF10182A),
+              color: ObTokens.text,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -794,40 +866,34 @@ class _PersonTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            color: Colors.white.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
           ),
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: person.color,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: person.color.withValues(alpha: 0.32),
+                      color: person.color.withValues(alpha: 0.28),
                       blurRadius: 10,
-                      offset: const Offset(0, 5),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Center(
                   child: Text(
                     person.initials,
-                    style: const TextStyle(fontSize: 20),
+                    style: const TextStyle(fontSize: 18),
                   ),
                 ),
               ),
@@ -839,11 +905,11 @@ class _PersonTile extends StatelessWidget {
                     Text(
                       person.name,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: const Color(0xFF171B2C),
+                        color: ObTokens.text,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       statusLabel,
                       style: theme.textTheme.labelLarge?.copyWith(
@@ -854,12 +920,23 @@ class _PersonTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                person.amount,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: statusColor,
-                  fontWeight: FontWeight.w800,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    person.amount,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    LucideIcons.chevronRight,
+                    size: 16,
+                    color: ObTokens.textMuted,
+                  ),
+                ],
               ),
             ],
           ),
@@ -887,13 +964,13 @@ class _AddNewDialog extends StatelessWidget {
     return Container(
       width: math.min(MediaQuery.sizeOf(context).width - 36, 720),
       margin: const EdgeInsets.all(18),
-      padding: const EdgeInsets.fromLTRB(26, 26, 26, 28),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(40),
+        color: ObTokens.canvas,
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.24),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 40,
             offset: const Offset(0, 20),
           ),
@@ -909,35 +986,39 @@ class _AddNewDialog extends StatelessWidget {
                 child: Text(
                   'Add New',
                   style: theme.textTheme.headlineMedium?.copyWith(
-                    color: const Color(0xFF111827),
+                    color: ObTokens.text,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: onClose,
-                icon: const Icon(
-                  Icons.close,
-                  color: Color(0xFF4B5563),
-                  size: 30,
+              InkWell(
+                onTap: onClose,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(LucideIcons.x, size: 18, color: ObTokens.textMuted),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           _AddNewActionCard(
             title: 'Add Expense',
             subtitle: 'Track your spending',
             icon: LucideIcons.receipt,
-            gradient: const [Color(0xFF5FB5EC), Color(0xFF4B98D8)],
+            gradientColors: const [ObTokens.sky, ObTokens.iris],
             onTap: onAddExpense,
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 14),
           _AddNewActionCard(
             title: 'Add Borrow/Lend',
             subtitle: 'Track money owed',
             icon: LucideIcons.users,
-            gradient: const [Color(0xFF9F83F8), Color(0xFF6CC8AE)],
+            gradientColors: const [ObTokens.iris, ObTokens.mintDeep],
             onTap: onAddBorrowLend,
           ),
         ],
@@ -951,14 +1032,14 @@ class _AddNewActionCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.gradient,
+    required this.gradientColors,
     required this.onTap,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
-  final List<Color> gradient;
+  final List<Color> gradientColors;
   final VoidCallback onTap;
 
   @override
@@ -967,60 +1048,62 @@ class _AddNewActionCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(22),
             gradient: LinearGradient(
-              colors: gradient,
+              colors: gradientColors,
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: gradient.last.withValues(alpha: 0.22),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
+                color: gradientColors.last.withValues(alpha: 0.28),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Row(
             children: [
               Container(
-                width: 76,
-                height: 76,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(icon, color: Colors.white, size: 34),
+                child: Icon(icon, color: Colors.white, size: 28),
               ),
-              const SizedBox(width: 22),
+              const SizedBox(width: 18),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.4,
-                          ),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        fontWeight: FontWeight.w500,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
                       ),
                     ),
                   ],
                 ),
+              ),
+              Icon(
+                LucideIcons.arrowRight,
+                color: Colors.white.withValues(alpha: 0.8),
+                size: 20,
               ),
             ],
           ),

@@ -3,11 +3,24 @@ class OfficeSchedule {
     required this.workStartMinutes,
     required this.workEndMinutes,
     required this.offDays,
+    this.lunchStartMinutes,
+    this.lunchEndMinutes,
   });
 
   final int workStartMinutes;
   final int workEndMinutes;
   final List<int> offDays;
+
+  /// Lunch suppression window. Null means no lunch suppression.
+  final int? lunchStartMinutes;
+  final int? lunchEndMinutes;
+
+  bool isLunchTime(int minutesSinceMidnight) {
+    final lStart = lunchStartMinutes;
+    final lEnd = lunchEndMinutes;
+    if (lStart == null || lEnd == null || lEnd <= lStart) return false;
+    return minutesSinceMidnight >= lStart && minutesSinceMidnight < lEnd;
+  }
 
   factory OfficeSchedule.fromJson(Map<String, dynamic> json) {
     return OfficeSchedule(
@@ -17,6 +30,8 @@ class OfficeSchedule {
               ?.map((value) => (value as num).toInt())
               .toList(growable: false) ??
           const <int>[6, 7],
+      lunchStartMinutes: (json['lunchStartMinutes'] as num?)?.toInt(),
+      lunchEndMinutes: (json['lunchEndMinutes'] as num?)?.toInt(),
     );
   }
 
@@ -25,6 +40,8 @@ class OfficeSchedule {
       'workStartMinutes': workStartMinutes,
       'workEndMinutes': workEndMinutes,
       'offDays': offDays,
+      if (lunchStartMinutes != null) 'lunchStartMinutes': lunchStartMinutes,
+      if (lunchEndMinutes != null) 'lunchEndMinutes': lunchEndMinutes,
     };
   }
 
@@ -32,11 +49,21 @@ class OfficeSchedule {
     int? workStartMinutes,
     int? workEndMinutes,
     List<int>? offDays,
+    Object? lunchStartMinutes = _sentinel,
+    Object? lunchEndMinutes = _sentinel,
   }) {
     return OfficeSchedule(
       workStartMinutes: workStartMinutes ?? this.workStartMinutes,
       workEndMinutes: workEndMinutes ?? this.workEndMinutes,
       offDays: offDays ?? this.offDays,
+      lunchStartMinutes: lunchStartMinutes == _sentinel
+          ? this.lunchStartMinutes
+          : lunchStartMinutes as int?,
+      lunchEndMinutes: lunchEndMinutes == _sentinel
+          ? this.lunchEndMinutes
+          : lunchEndMinutes as int?,
     );
   }
 }
+
+const Object _sentinel = Object();

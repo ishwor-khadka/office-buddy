@@ -33,18 +33,11 @@ class BreakBackground {
   }
 
   static Future<void> registerPeriodicTick() async {
-    // WorkManager periodic minimum is ~15 minutes on Android.
     await Workmanager().registerPeriodicTask(
       periodicTaskName,
       periodicTaskName,
       frequency: const Duration(minutes: 15),
       existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-    );
-    await Workmanager().registerOneOffTask(
-      hydrationRetryTaskName,
-      hydrationRetryTaskName,
-      initialDelay: const Duration(minutes: _hydrationRetryDelayMinutes),
-      existingWorkPolicy: ExistingWorkPolicy.replace,
     );
   }
 
@@ -53,7 +46,6 @@ class BreakBackground {
       WidgetsFlutterBinding.ensureInitialized();
       await FirebaseBootstrap.initialize();
 
-      // Initialize notifications in background isolate so we can show reminders.
       await NotificationService.initialize(onTapNotification: (_) {});
 
       final officeScheduleRepo = OfficeScheduleRepository();
@@ -74,7 +66,11 @@ class BreakBackground {
         return true;
       }
 
-      await _processHydration(
+      // Re-arm hydration schedule if the tail is running thin.
+      await NotificationService.rearmIfNeeded(schedule: officeSchedule);
+
+      // Retry logic: send a follow-up if a hydration slot fired but wasn't acked.
+      await _checkHydrationRetry(
         now: now,
         officeSchedule: officeSchedule,
         hydrationRepo: hydrationRepo,
@@ -102,7 +98,7 @@ class BreakBackground {
         return true;
       }
 
-      // BRK-02: Suppress if the user is already moving (steps recorded recently).
+      // Suppress if the user is already moving (steps recorded recently).
       final lastStepAt = await breakStateRepo.getLastStepAtMillis();
       if (lastStepAt != null && (nowMs - lastStepAt) <= 2 * 60 * 1000) {
         await breakStateRepo.setNextBreakAtMillis(
@@ -125,7 +121,6 @@ class BreakBackground {
         escalationLevel = 0;
         await breakStateRepo.setEscalationLevel(0);
       } else {
-        // Increase level every 30 minutes beyond 90 if user still sedentary.
         if (sedentaryMinutes >= 150) {
           escalationLevel = 3;
         } else if (sedentaryMinutes >= 120) {
@@ -140,23 +135,23 @@ class BreakBackground {
       final title = shouldEscalate ? 'Movement needed' : 'Time for a break';
       final body = switch (escalationLevel) {
         1 =>
-          '90 min sedentary. Lumbar disc pressure elevated. Walk ${settings.requiredSteps} steps to reset.',
+          '90 min sedentary. Walk ${settings.requiredSteps} steps to reset.',
         2 =>
-          '120 min no movement. Back strain risk +12% per hour. Walk ${settings.requiredSteps} steps now.',
+          '120 min without movement. Walk ${settings.requiredSteps} steps now.',
         3 =>
-          '150 min sedentary today. Cumulative risk significant. Walk ${settings.requiredSteps} steps now.',
+          '150+ min sedentary. Walk ${settings.requiredSteps} steps now.',
         _ => 'Walk ${settings.requiredSteps} steps to reset your body.',
       };
 
+      final notifId = NotificationService.breakNotificationId();
       await NotificationService.showBreakReminder(
-        id: 101,
+        id: notifId,
         title: title,
         body: body,
         payload: payload,
-        fullScreenIntent: shouldEscalate,
+        isEscalated: shouldEscalate,
       );
 
-      // Mark as ignored until the user completes; increment ignored counter.
       await DatabaseHelper.instance.insertBreakLog(
         timestampMillis: nowMs,
         outcome: 'IGNORED',
@@ -165,7 +160,6 @@ class BreakBackground {
       );
       await breakStateRepo.setConsecutiveIgnored(ignored + 1);
 
-      // Schedule the next check based on interval.
       await breakStateRepo.setNextBreakAtMillis(
         nowMs + settings.breakIntervalMinutes * 60 * 1000,
       );
@@ -174,111 +168,133 @@ class BreakBackground {
     });
   }
 
-  static Future<void> _processHydration({
+  /// Sends a one-time follow-up if a hydration slot fired but wasn't acknowledged.
+  static Future<void> _checkHydrationRetry({
     required DateTime now,
     required OfficeSchedule officeSchedule,
     required HydrationRepository hydrationRepo,
   }) async {
     final nowMs = now.millisecondsSinceEpoch;
-    final dayStart = DateTime(now.year, now.month, now.day);
-    final dayStartMs = dayStart.millisecondsSinceEpoch;
+    final nowMinutes = now.hour * 60 + now.minute;
+
     final firstReminderMinutes =
         officeSchedule.workStartMinutes + _hydrationFirstOffsetMinutes;
     final lastReminderMinutes =
         officeSchedule.workEndMinutes - _hydrationLastOffsetMinutes;
-    final nowMinutes = now.hour * 60 + now.minute;
 
-    if (lastReminderMinutes <= firstReminderMinutes) {
-      return;
-    }
     if (nowMinutes < firstReminderMinutes || nowMinutes > lastReminderMinutes) {
       return;
     }
 
-    final dayEntries = (await hydrationRepo.loadEntries())
-        .where((entry) {
-          final t = (entry['t'] as num?)?.toInt();
-          if (t == null) return false;
-          return t >= dayStartMs;
-        })
-        .toList(growable: false);
+    // Skip if user explicitly skipped today.
+    if (await hydrationRepo.isHydrationSkippedToday(now)) return;
 
-    if (dayEntries.length >= _hydrationPerDayLimit) {
-      await hydrationRepo.clearPendingPrompt();
+    // Skip if hydration snooze is active.
+    final snoozeUntil = await hydrationRepo.getHydrationSnoozeUntilMillis();
+    if (snoozeUntil != null && nowMs < snoozeUntil) return;
+
+    // Skip if today's quota is already met.
+    final dayStart = DateTime(now.year, now.month, now.day);
+    final dayStartMs = dayStart.millisecondsSinceEpoch;
+    final dayEntries = (await hydrationRepo.loadEntries()).where((entry) {
+      final t = (entry['t'] as num?)?.toInt();
+      return t != null && t >= dayStartMs;
+    }).toList(growable: false);
+
+    if (dayEntries.length >= _hydrationPerDayLimit) return;
+
+    // Compute all slots that should have fired today up to now.
+    final expectedSlots = _computeTodaySlots(officeSchedule, now);
+    final passedSlots = expectedSlots.where((s) => s.isBefore(now)).toList();
+    if (passedSlots.isEmpty) return;
+
+    final latestSlot = passedSlots.last;
+
+    // Skip retry if in lunch window.
+    final latestSlotMinutes = latestSlot.hour * 60 + latestSlot.minute;
+    if (officeSchedule.isLunchTime(latestSlotMinutes)) return;
+
+    // Check if the latest slot has been acknowledged.
+    final lastAckMs = await hydrationRepo.getLastAcknowledgedAtMillis();
+    if (lastAckMs != null &&
+        lastAckMs >= latestSlot.millisecondsSinceEpoch) {
       return;
     }
 
-    final pendingSince = await hydrationRepo.getPendingSinceMillis();
-    final retryCount = await hydrationRepo.getPendingRetryCount();
-    if (pendingSince != null) {
-      if (nowMs - pendingSince >= _hydrationRetryDelayMinutes * 60 * 1000 &&
-          retryCount < 1) {
-        await _sendHydrationPrompt(
-          hydrationRepo: hydrationRepo,
-          nowMs: nowMs,
-          retryCount: retryCount + 1,
-        );
-      }
+    // Only retry once per slot (check lastPromptAt).
+    final lastPromptMs = await hydrationRepo.getLastPromptAtMillis();
+    if (lastPromptMs != null &&
+        lastPromptMs >= latestSlot.millisecondsSinceEpoch) {
       return;
     }
 
-    final lastAck = await hydrationRepo.getLastAcknowledgedAtMillis();
-    final dueToStart = nowMinutes >= firstReminderMinutes;
-    final dueToInterval =
-        lastAck != null &&
-        (nowMs - lastAck) >= (_hydrationIntervalMinutes * 60 * 1000);
-    final noPromptYetToday = dayEntries.isEmpty;
-    final dueForNext = noPromptYetToday ? dueToStart : dueToInterval;
-    if (!dueForNext) return;
+    // Require the retry delay to pass before sending.
+    final minutesSinceSlot = now.difference(latestSlot).inMinutes;
+    if (minutesSinceSlot < _hydrationRetryDelayMinutes) return;
 
-    // Ensure there is enough room for one retry before office close.
-    if (nowMinutes + _hydrationRetryDelayMinutes > lastReminderMinutes) {
-      return;
-    }
-
-    await _sendHydrationPrompt(
+    await _sendHydrationRetry(
       hydrationRepo: hydrationRepo,
       nowMs: nowMs,
-      retryCount: 0,
+      logsToday: dayEntries.length,
     );
   }
 
-  static Future<void> _sendHydrationPrompt({
+  static List<DateTime> _computeTodaySlots(
+    OfficeSchedule schedule,
+    DateTime now,
+  ) {
+    final dayStart = DateTime(now.year, now.month, now.day);
+    final firstAt = dayStart.add(
+      Duration(minutes: schedule.workStartMinutes + _hydrationFirstOffsetMinutes),
+    );
+    final lastAt = dayStart.add(
+      Duration(minutes: schedule.workEndMinutes - _hydrationLastOffsetMinutes),
+    );
+    if (!firstAt.isBefore(lastAt)) return const [];
+
+    final slots = <DateTime>[];
+    var at = firstAt;
+    var count = 0;
+    while (count < _hydrationPerDayLimit && !at.isAfter(lastAt)) {
+      final atMinutes = at.hour * 60 + at.minute;
+      if (!schedule.isLunchTime(atMinutes)) {
+        slots.add(at);
+      }
+      count++;
+      at = at.add(const Duration(minutes: _hydrationIntervalMinutes));
+    }
+    return slots;
+  }
+
+  static Future<void> _sendHydrationRetry({
     required HydrationRepository hydrationRepo,
     required int nowMs,
-    required int retryCount,
+    required int logsToday,
   }) async {
     final random = Random(nowMs);
-    final title =
-        NotificationService.hydrationTitles[random.nextInt(
-          NotificationService.hydrationTitles.length,
-        )];
-    final body =
-        NotificationService.hydrationBodies[random.nextInt(
-          NotificationService.hydrationBodies.length,
-        )];
-    final actionLabel =
-        NotificationService.hydrationActionLabels[random.nextInt(
-          NotificationService.hydrationActionLabels.length,
-        )];
+    final allTitles = NotificationService.hydrationTitles;
+    final title = allTitles[random.nextInt(allTitles.length)];
+    final body = NotificationService.hydrationBodies[random.nextInt(
+      NotificationService.hydrationBodies.length,
+    )];
+    final actionLabel = NotificationService.hydrationActionLabels[random.nextInt(
+      NotificationService.hydrationActionLabels.length,
+    )];
     final notificationId = 700 + random.nextInt(100000);
+
+    final progressSuffix = ' ($logsToday/$_hydrationPerDayLimit today)';
 
     await NotificationService.showHydrationReminder(
       id: notificationId,
       title: title,
-      body: '$body (+$_hydrationAmountMl mL)',
+      body: '$body (+$_hydrationAmountMl mL)$progressSuffix',
       actionLabel: actionLabel,
     );
+
     await hydrationRepo.setPendingPrompt(
       sinceMillis: nowMs,
       notificationId: notificationId,
-      retryCount: retryCount,
-    );
-    await Workmanager().registerOneOffTask(
-      hydrationRetryTaskName,
-      hydrationRetryTaskName,
-      initialDelay: const Duration(minutes: _hydrationRetryDelayMinutes),
-      existingWorkPolicy: ExistingWorkPolicy.replace,
+      retryCount: 1,
     );
   }
 }

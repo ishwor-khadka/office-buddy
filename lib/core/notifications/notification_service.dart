@@ -4,14 +4,21 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../breaks/break_state_repository.dart';
 import '../hydration/hydration_repository.dart';
 import '../router/app_routes.dart';
 import '../settings/office_schedule.dart';
 
+// Hydration action IDs
 const String hydrationActionId = 'hydration_done';
+const String hydrationSnoozeActionId = 'hydration_snooze_15';
+const String hydrationSkipDayActionId = 'hydration_skip_day';
 const String hydrationPayload = AppRoutes.hydrationScreen;
 
-// Must be top-level for background isolates.
+// Break action IDs
+const String breakSnoozeActionId = 'break_snooze_10';
+const String breakDoneActionId = 'break_done';
+
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse response) {
   NotificationService.handleNotificationResponse(response);
@@ -21,6 +28,8 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   static final HydrationRepository _hydrationRepository = HydrationRepository();
+  static final BreakStateRepository _breakStateRepository =
+      BreakStateRepository();
 
   static const String breakChannelId = 'breaks';
   static const String breakChannelName = 'Break reminders';
@@ -30,34 +39,66 @@ class NotificationService {
   static const String hydrationChannelName = 'Hydration reminders';
   static const String hydrationChannelDescription =
       'Reminders to drink 250 ml of water during office hours.';
+  static const String _hydrationGroupKey = 'com.officeBuddy.hydration';
+  static const String _breakGroupKey = 'com.officeBuddy.breaks';
+  static const String _notificationIcon = 'ic_notification';
+
   static const int _hydrationBaseId = 700000;
 
-  static const List<String> hydrationTitles = <String>[
-    'Desk Hydration Check',
-    'Water Break Before Your Next Task',
+  // Time-of-day hydration titles
+  static const List<String> _hydrationMorningTitles = <String>[
+    'Good Morning — Time to Hydrate',
+    'Start Strong with Water',
+    'Morning Hydration Check',
+    'Fuel Your Focus — Drink Water',
+    'Rise and Sip',
+  ];
+
+  static const List<String> _hydrationMidmorningTitles = <String>[
+    'Mid-Morning Water Break',
     'Refill Your Focus',
-    'Hydrate to Stay Sharp',
+    'Stay Sharp — Sip Water',
+    'Hydrate to Keep Going',
+    'Water Break Before Your Next Task',
+  ];
+
+  static const List<String> _hydrationAfternoonTitles = <String>[
+    'Afternoon Hydration Check',
+    'Beat the Afternoon Slump — Drink Water',
     'Boost Your Energy with Water',
-    'Take a Sip 💧',
-    'Your Body Needs Water',
     'Quick Water Break',
-    "Don’t Forget to Hydrate",
-    'Sip Sip Time',
+    'Stay Refreshed This Afternoon',
+  ];
+
+  static const List<String> _hydrationLateAfternoonTitles = <String>[
+    'Almost Done — Stay Hydrated',
+    'Late Afternoon Sip',
+    'Wrap Up the Day Well — Drink Water',
+    'One More Water Break',
+    "Don't Forget to Hydrate",
   ];
 
   static const List<String> hydrationBodies = <String>[
     'Drink 250 mL to stay refreshed.',
     'Small sips help maintain focus.',
-    'A quick water break can improve energy.',
+    'A quick water break improves energy.',
   ];
 
   static const List<String> hydrationActionLabels = <String>[
     'Hydrated',
-    '+250ml',
+    '+250 ml',
     'Cheers',
     'Done',
     'Drank It',
   ];
+
+  // Keep for backward compat with break_background.dart
+  static List<String> get hydrationTitles => [
+        ..._hydrationMorningTitles,
+        ..._hydrationMidmorningTitles,
+        ..._hydrationAfternoonTitles,
+        ..._hydrationLateAfternoonTitles,
+      ];
 
   static FlutterLocalNotificationsPlugin get plugin => _plugin;
 
@@ -65,8 +106,19 @@ class NotificationService {
     required void Function(String? payload) onTapNotification,
   }) async {
     await _configureLocalTimeZone();
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidInit);
+
+    const androidInit =
+        AndroidInitializationSettings(_notificationIcon);
+    const darwinInit = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: darwinInit,
+      macOS: darwinInit,
+    );
 
     await _plugin.initialize(
       settings: initSettings,
@@ -79,26 +131,24 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
-    const channel = AndroidNotificationChannel(
-      breakChannelId,
-      breakChannelName,
-      description: breakChannelDescription,
-      importance: Importance.max,
-    );
-
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    await android?.createNotificationChannel(channel);
 
-    const hydrationChannel = AndroidNotificationChannel(
+    await android?.createNotificationChannel(const AndroidNotificationChannel(
+      breakChannelId,
+      breakChannelName,
+      description: breakChannelDescription,
+      importance: Importance.high,
+    ));
+
+    await android?.createNotificationChannel(const AndroidNotificationChannel(
       hydrationChannelId,
       hydrationChannelName,
       description: hydrationChannelDescription,
-      importance: Importance.max,
-    );
-    await android?.createNotificationChannel(hydrationChannel);
+      importance: Importance.defaultImportance,
+    ));
   }
 
   static Future<void> requestAndroidPermissions() async {
@@ -108,6 +158,14 @@ class NotificationService {
         >();
     await android?.requestNotificationsPermission();
     await android?.requestExactAlarmsPermission();
+  }
+
+  static Future<void> requestIosPermissions() async {
+    final ios = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
+    await ios?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
   static Future<void> _configureLocalTimeZone() async {
@@ -120,29 +178,57 @@ class NotificationService {
     }
   }
 
+  /// Returns a stable, day-unique break notification ID.
+  static int breakNotificationId() {
+    final now = DateTime.now();
+    return 100000 + (now.year % 100) * 400 + _dayOfYear(now);
+  }
+
   static Future<void> showBreakReminder({
     required int id,
     required String title,
     required String body,
     required String payload,
-    bool fullScreenIntent = false,
+    bool isEscalated = false,
   }) async {
     final android = AndroidNotificationDetails(
       breakChannelId,
       breakChannelName,
       channelDescription: breakChannelDescription,
-      importance: Importance.max,
+      importance: isEscalated ? Importance.high : Importance.defaultImportance,
       priority: Priority.high,
-      category: AndroidNotificationCategory.alarm,
-      fullScreenIntent: fullScreenIntent,
+      category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
+      groupKey: _breakGroupKey,
+      icon: _notificationIcon,
+      actions: const <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          breakSnoozeActionId,
+          'Snooze 10m',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+        AndroidNotificationAction(
+          breakDoneActionId,
+          'Done',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    final darwin = DarwinNotificationDetails(
+      categoryIdentifier: 'break',
+      interruptionLevel: isEscalated
+          ? InterruptionLevel.timeSensitive
+          : InterruptionLevel.active,
     );
 
     await _plugin.show(
       id: id,
       title: title,
       body: body,
-      notificationDetails: NotificationDetails(android: android),
+      notificationDetails: NotificationDetails(android: android, iOS: darwin),
       payload: payload,
     );
   }
@@ -157,11 +243,13 @@ class NotificationService {
       hydrationChannelId,
       hydrationChannelName,
       channelDescription: hydrationChannelDescription,
-      importance: Importance.max,
-      priority: Priority.high,
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
       autoCancel: true,
       category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
+      groupKey: _hydrationGroupKey,
+      icon: _notificationIcon,
       actions: <AndroidNotificationAction>[
         AndroidNotificationAction(
           hydrationActionId,
@@ -169,14 +257,30 @@ class NotificationService {
           showsUserInterface: true,
           cancelNotification: true,
         ),
+        const AndroidNotificationAction(
+          hydrationSnoozeActionId,
+          'Snooze 15m',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+        const AndroidNotificationAction(
+          hydrationSkipDayActionId,
+          'Skip today',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
       ],
+    );
+
+    const darwin = DarwinNotificationDetails(
+      categoryIdentifier: 'hydration',
     );
 
     await _plugin.show(
       id: id,
       title: title,
       body: body,
-      notificationDetails: NotificationDetails(android: android),
+      notificationDetails: NotificationDetails(android: android, iOS: darwin),
       payload: hydrationPayload,
     );
   }
@@ -191,9 +295,7 @@ class NotificationService {
     final now = DateTime.now();
     for (var dayOffset = 0; dayOffset < daysAhead; dayOffset++) {
       final date = now.add(Duration(days: dayOffset));
-      if (schedule.offDays.contains(date.weekday)) {
-        continue;
-      }
+      if (schedule.offDays.contains(date.weekday)) continue;
 
       final dayStart = DateTime(date.year, date.month, date.day);
       final firstAt = dayStart.add(
@@ -202,19 +304,34 @@ class NotificationService {
       final lastAt = dayStart.add(
         Duration(minutes: schedule.workEndMinutes - 30),
       );
-      if (!firstAt.isBefore(lastAt)) {
-        continue;
-      }
+      if (!firstAt.isBefore(lastAt)) continue;
 
       var slot = 0;
       var at = firstAt;
       while (slot < 6 && !at.isAfter(lastAt)) {
-        if (at.isAfter(now)) {
-          await _scheduleHydrationAt(id: _hydrationIdFor(date, slot), at: at);
+        final atMinutes = at.hour * 60 + at.minute;
+        final inLunch = schedule.isLunchTime(atMinutes);
+        if (!inLunch && at.isAfter(now)) {
+          await _scheduleHydrationAt(
+            id: _hydrationIdFor(date, slot),
+            at: at,
+            hour: at.hour,
+          );
         }
         slot++;
         at = at.add(const Duration(minutes: 75));
       }
+    }
+  }
+
+  /// Checks if the scheduled hydration tail is running thin and reschedules.
+  static Future<void> rearmIfNeeded({required OfficeSchedule schedule}) async {
+    final pending = await _plugin.pendingNotificationRequests();
+    final hydrationCount =
+        pending.where((r) => r.payload == hydrationPayload).length;
+    // Rearm when fewer than 6 future slots remain (less than ~1 day's worth).
+    if (hydrationCount < 6) {
+      await rescheduleHydrationReminders(schedule: schedule, daysAhead: 7);
     }
   }
 
@@ -229,26 +346,42 @@ class NotificationService {
     return d.difference(jan1).inDays + 1;
   }
 
+  static String _pickHydrationTitle(int hour, int seed) {
+    final List<String> pool;
+    if (hour < 11) {
+      pool = _hydrationMorningTitles;
+    } else if (hour < 13) {
+      pool = _hydrationMidmorningTitles;
+    } else if (hour < 16) {
+      pool = _hydrationAfternoonTitles;
+    } else {
+      pool = _hydrationLateAfternoonTitles;
+    }
+    return pool[seed.abs() % pool.length];
+  }
+
   static Future<void> _scheduleHydrationAt({
     required int id,
     required DateTime at,
+    required int hour,
   }) async {
     final seed = at.millisecondsSinceEpoch + id;
-    final title = hydrationTitles[seed.abs() % hydrationTitles.length];
+    final title = _pickHydrationTitle(hour, seed);
     final body = hydrationBodies[(seed ~/ 7).abs() % hydrationBodies.length];
     final actionLabel =
-        hydrationActionLabels[(seed ~/ 13).abs() %
-            hydrationActionLabels.length];
+        hydrationActionLabels[(seed ~/ 13).abs() % hydrationActionLabels.length];
 
     final android = AndroidNotificationDetails(
       hydrationChannelId,
       hydrationChannelName,
       channelDescription: hydrationChannelDescription,
-      importance: Importance.max,
-      priority: Priority.high,
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
       autoCancel: true,
       category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
+      groupKey: _hydrationGroupKey,
+      icon: _notificationIcon,
       actions: <AndroidNotificationAction>[
         AndroidNotificationAction(
           hydrationActionId,
@@ -256,8 +389,22 @@ class NotificationService {
           showsUserInterface: true,
           cancelNotification: true,
         ),
+        const AndroidNotificationAction(
+          hydrationSnoozeActionId,
+          'Snooze 15m',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+        const AndroidNotificationAction(
+          hydrationSkipDayActionId,
+          'Skip today',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
       ],
     );
+
+    const darwin = DarwinNotificationDetails(categoryIdentifier: 'hydration');
 
     try {
       await _plugin.zonedSchedule(
@@ -265,7 +412,7 @@ class NotificationService {
         title: title,
         body: '$body (+250 mL)',
         scheduledDate: tz.TZDateTime.from(at, tz.local),
-        notificationDetails: NotificationDetails(android: android),
+        notificationDetails: NotificationDetails(android: android, iOS: darwin),
         payload: hydrationPayload,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
@@ -276,7 +423,7 @@ class NotificationService {
         title: title,
         body: '$body (+250 mL)',
         scheduledDate: tz.TZDateTime.from(at, tz.local),
-        notificationDetails: NotificationDetails(android: android),
+        notificationDetails: NotificationDetails(android: android, iOS: darwin),
         payload: hydrationPayload,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       );
@@ -298,31 +445,61 @@ class NotificationService {
     debugPrint(
       'handleNotificationResponse: id=${response.id}, action=${response.actionId}, payload=${response.payload}',
     );
-    if (response.payload != hydrationPayload &&
-        response.actionId != hydrationActionId) {
+
+    final id = response.id;
+    final actionId = response.actionId;
+    final payload = response.payload;
+
+    // ---- Hydration notifications ----
+    final isHydrationPayload = payload == hydrationPayload;
+    final isHydrationAction = actionId == hydrationActionId ||
+        actionId == hydrationSnoozeActionId ||
+        actionId == hydrationSkipDayActionId;
+
+    if (isHydrationPayload || isHydrationAction) {
+      if (id != null) await _plugin.cancel(id: id);
+
+      if (actionId == hydrationActionId) {
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        await _hydrationRepository.addHydrationEntry(timestampMillis: nowMs);
+        await _hydrationRepository.clearPendingPrompt();
+        await _hydrationRepository.clearHydrationSnooze();
+      } else if (actionId == hydrationSnoozeActionId) {
+        final snoozeUntil = DateTime.now()
+            .add(const Duration(minutes: 15))
+            .millisecondsSinceEpoch;
+        await _hydrationRepository.setHydrationSnoozeUntil(snoozeUntil);
+        await _hydrationRepository.clearPendingPrompt();
+      } else if (actionId == hydrationSkipDayActionId) {
+        await _hydrationRepository.skipTodayHydration(DateTime.now());
+        await _hydrationRepository.clearPendingPrompt();
+        // Cancel all remaining hydration notifications for today.
+        await _cancelHydrationSchedules();
+      } else {
+        // Body tap — user acknowledged but didn't log; just clear pending.
+        await _hydrationRepository.clearPendingPrompt();
+      }
       return;
     }
 
-    final tappedNotificationId = response.id;
-    final fallbackPendingId = await _hydrationRepository
-        .getPendingNotificationId();
-    final idToCancel = tappedNotificationId ?? fallbackPendingId;
-    if (idToCancel != null) {
-      await _plugin.cancel(id: idToCancel);
-    }
-    // Device-specific fallback: some OEMs ignore targeted cancel for action taps.
-    await _plugin.cancelAll();
+    // ---- Break notifications ----
+    final isBreakPayload = payload == AppRoutes.breakScreen;
+    final isBreakAction =
+        actionId == breakSnoozeActionId || actionId == breakDoneActionId;
 
-    if (response.actionId != hydrationActionId) {
-      return;
-    }
+    if (isBreakPayload || isBreakAction) {
+      if (id != null) await _plugin.cancel(id: id);
 
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    await _hydrationRepository.addHydrationEntry(timestampMillis: nowMs);
-    await _hydrationRepository.clearPendingPrompt();
-    if (idToCancel != null) {
-      await _plugin.cancel(id: idToCancel);
+      if (actionId == breakSnoozeActionId) {
+        final snoozeUntil = DateTime.now()
+            .add(const Duration(minutes: 10))
+            .millisecondsSinceEpoch;
+        await _breakStateRepository.setSnoozeUntilMillis(snoozeUntil);
+      } else if (actionId == breakDoneActionId) {
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        await _breakStateRepository.setConsecutiveIgnored(0);
+        await _breakStateRepository.setLastMovementAtMillis(nowMs);
+      }
     }
-    await _plugin.cancelAll();
   }
 }

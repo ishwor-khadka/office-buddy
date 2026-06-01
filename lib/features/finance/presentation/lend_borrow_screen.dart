@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/finance/finance_repository.dart';
 import '../../../core/settings/currency_preference.dart';
 import '../../../core/settings/currency_preference_repository.dart';
 import '../../../core/ui/ob_background.dart';
+import '../../../core/ui/ob_glass.dart';
+import '../../../core/ui/ob_tokens.dart';
 
 class LendBorrowScreen extends StatefulWidget {
   const LendBorrowScreen({super.key});
@@ -63,245 +66,147 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
             final note = isBorrowed
                 ? 'You borrowed money from $noteName'
                 : '$noteName borrowed money from you';
+            final accentColor = isBorrowed
+                ? const Color(0xFFE71D3D)
+                : const Color(0xFF0BA24D);
 
             return Scaffold(
-              backgroundColor: const Color(0xFFF1F1F1),
+              extendBodyBehindAppBar: true,
               body: ObBackground(
-                child: SafeArea(
-                  child: Center(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 430),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF5BADE7),
-                                Color(0xFF8B7AF6),
-                                Color(0xFF68C9AE),
-                              ],
-                              stops: [0.0, 0.56, 1.0],
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 26,
-                                offset: const Offset(0, 14),
-                              ),
-                            ],
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: -60,
+                      right: -40,
+                      child: Container(
+                        width: 260,
+                        height: 260,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: ObTokens.iris.withValues(alpha: 0.14),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 80,
+                      left: -50,
+                      child: Container(
+                        width: 220,
+                        height: 220,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: ObTokens.mintDeep.withValues(alpha: 0.14),
+                        ),
+                      ),
+                    ),
+                    SafeArea(
+                      child: Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 430),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(),
-                                      icon: const Icon(
-                                        Icons.arrow_back,
-                                        color: Colors.white,
-                                        size: 28,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        'Add Borrow/Lend',
-                                        style: theme.textTheme.titleLarge
-                                            ?.copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.18),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: _ModeTab(
-                                          label: 'Borrowed (You owe)',
-                                          selected: isBorrowed,
-                                          onTap: () =>
-                                              _refresh(() => _selectedTab = 0),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: _ModeTab(
-                                          label: 'Lent (They owe)',
-                                          selected: !isBorrowed,
-                                          onTap: () =>
-                                              _refresh(() => _selectedTab = 1),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                                Center(
-                                  child: Container(
-                                    width: 100,
-                                    height: 100,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Color(0xFF52BF9B),
-                                    ),
-                                    child: const Center(
-                                      child: Text(
-                                        '👱',
-                                        style: TextStyle(fontSize: 42),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 26),
-                                Container(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    18,
-                                    18,
-                                    18,
-                                    14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
+                                _buildHeader(context),
+                                const SizedBox(height: 20),
+                                _buildTabBar(theme, isBorrowed),
+                                const SizedBox(height: 20),
+                                _buildAvatarHero(theme, isBorrowed, accentColor),
+                                const SizedBox(height: 16),
+                                ObGlass(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        "Person's Name",
-                                        style: theme.textTheme.labelLarge
-                                            ?.copyWith(
-                                              color: const Color(0xFF6C7487),
-                                            ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      TextField(
-                                        controller: _nameController,
-                                        onChanged: (_) => _refresh(() {}),
-                                        style: theme.textTheme.titleLarge
-                                            ?.copyWith(
-                                              color: const Color(0xFF1C2233),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          border: InputBorder.none,
-                                          enabledBorder: InputBorder.none,
-                                          focusedBorder: InputBorder.none,
-                                          contentPadding: EdgeInsets.zero,
+                                      _InputField(
+                                        label: "Person's Name",
+                                        icon: LucideIcons.user,
+                                        child: TextField(
+                                          controller: _nameController,
+                                          onChanged: (_) => _refresh(() {}),
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                color: ObTokens.text,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                          decoration: const InputDecoration(
+                                            hintText: 'Enter name',
+                                            isDense: true,
+                                            border: InputBorder.none,
+                                            enabledBorder: InputBorder.none,
+                                            focusedBorder: InputBorder.none,
+                                            contentPadding: EdgeInsets.zero,
+                                          ),
                                         ),
                                       ),
-                                      const Divider(height: 18),
-                                      Text(
-                                        'Amount',
-                                        style: theme.textTheme.labelLarge
-                                            ?.copyWith(
-                                              color: const Color(0xFF6C7487),
-                                            ),
+                                      Divider(
+                                        height: 24,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.6,
+                                        ),
                                       ),
-                                      const SizedBox(height: 2),
-                                      TextField(
-                                        controller: _amountController,
-                                        keyboardType: TextInputType.number,
-                                        style: theme.textTheme.titleLarge
-                                            ?.copyWith(
-                                              color: const Color(0xFF1C2233),
-                                              fontWeight: FontWeight.w500,
+                                      _InputField(
+                                        label: 'Amount',
+                                        icon: LucideIcons.banknote,
+                                        child: TextField(
+                                          controller: _amountController,
+                                          keyboardType: TextInputType.number,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                color: ObTokens.text,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                          decoration: InputDecoration(
+                                            prefixText: '${currency.symbol} ',
+                                            prefixStyle: TextStyle(
+                                              color: ObTokens.textMuted,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w400,
                                             ),
-                                        decoration: InputDecoration(
-                                          prefixText: '${currency.symbol} ',
-                                          prefixStyle: const TextStyle(
-                                            color: Color(0xFF8F97A8),
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.w400,
+                                            isDense: true,
+                                            border: InputBorder.none,
+                                            enabledBorder: InputBorder.none,
+                                            focusedBorder: InputBorder.none,
+                                            contentPadding: EdgeInsets.zero,
                                           ),
-                                          isDense: true,
-                                          border: InputBorder.none,
-                                          enabledBorder: InputBorder.none,
-                                          focusedBorder: InputBorder.none,
-                                          contentPadding: EdgeInsets.zero,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 22),
-                                Container(
+                                const SizedBox(height: 14),
+                                ObGlass(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
+                                    horizontal: 16,
                                     vertical: 14,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.16),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Text(
-                                    note,
-                                    textAlign: TextAlign.center,
-                                    style: theme.textTheme.bodyLarge?.copyWith(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.95,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        LucideIcons.info,
+                                        size: 15,
+                                        color: ObTokens.textMuted,
                                       ),
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          note,
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                color: ObTokens.textMuted,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 22),
-                                FilledButton(
-                                  onPressed: _saving
-                                      ? null
-                                      : () async {
-                                          _refresh(() => _saving = true);
-                                          try {
-                                            await _repository.addBorrowLend(
-                                              name: _nameController.text,
-                                              amount: _amountController.text,
-                                              isOwed: _selectedTab == 0,
-                                            );
-                                            if (!mounted) return;
-                                            navigator.pop(true);
-                                          } finally {
-                                            if (mounted) {
-                                              _refresh(() => _saving = false);
-                                            }
-                                          }
-                                        },
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF10182A),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 18,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(18),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _saving ? 'Saving...' : 'Save Transaction',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                          color: const Color(0xFF10182A),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
+                                const SizedBox(height: 24),
+                                _buildSaveButton(
+                                  theme,
+                                  navigator,
+                                  isBorrowed,
                                 ),
                               ],
                             ),
@@ -309,7 +214,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             );
@@ -318,17 +223,239 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
       },
     );
   }
+
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
+            ),
+            child: const Icon(
+              LucideIcons.arrowLeft,
+              color: ObTokens.text,
+              size: 18,
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: const LinearGradient(
+              colors: [ObTokens.iris, ObTokens.mintDeep],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: const Icon(LucideIcons.users, color: Colors.white, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          'Add Borrow / Lend',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: ObTokens.text,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabBar(ThemeData theme, bool isBorrowed) {
+    return ObGlass(
+      padding: const EdgeInsets.all(5),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ModeTab(
+              label: 'Borrowed',
+              sublabel: 'You owe',
+              selected: isBorrowed,
+              selectedColor: const Color(0xFFE71D3D),
+              onTap: () => _refresh(() => _selectedTab = 0),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _ModeTab(
+              label: 'Lent',
+              sublabel: 'They owe',
+              selected: !isBorrowed,
+              selectedColor: const Color(0xFF0BA24D),
+              onTap: () => _refresh(() => _selectedTab = 1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatarHero(
+    ThemeData theme,
+    bool isBorrowed,
+    Color accentColor,
+  ) {
+    return Center(
+      child: Container(
+        width: 88,
+        height: 88,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: isBorrowed
+                ? [const Color(0xFFFF6B6B), const Color(0xFFE71D3D)]
+                : [ObTokens.mintDeep, const Color(0xFF0BA24D)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withValues(alpha: 0.32),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            LucideIcons.user,
+            color: Colors.white,
+            size: 38,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton(
+    ThemeData theme,
+    NavigatorState navigator,
+    bool isBorrowed,
+  ) {
+    return SizedBox(
+      height: 54,
+      child: ElevatedButton(
+        onPressed: _saving
+            ? null
+            : () async {
+                _refresh(() => _saving = true);
+                try {
+                  await _repository.addBorrowLend(
+                    name: _nameController.text,
+                    amount: _amountController.text,
+                    isOwed: _selectedTab == 0,
+                  );
+                  if (!mounted) return;
+                  navigator.pop(true);
+                } finally {
+                  if (mounted) _refresh(() => _saving = false);
+                }
+              },
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: _saving
+                ? null
+                : const LinearGradient(
+                    colors: [ObTokens.iris, ObTokens.mintDeep],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+            color: _saving ? Colors.white.withValues(alpha: 0.4) : null,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  LucideIcons.check,
+                  size: 18,
+                  color: _saving ? ObTokens.textMuted : Colors.white,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _saving ? 'Saving…' : 'Save Transaction',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: _saving ? ObTokens.textMuted : Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InputField extends StatelessWidget {
+  const _InputField({
+    required this.label,
+    required this.icon,
+    required this.child,
+  });
+
+  final String label;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: ObTokens.textMuted),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: ObTokens.textMuted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        child,
+      ],
+    );
+  }
 }
 
 class _ModeTab extends StatelessWidget {
   const _ModeTab({
     required this.label,
+    required this.sublabel,
     required this.selected,
+    required this.selectedColor,
     required this.onTap,
   });
 
   final String label;
+  final String sublabel;
   final bool selected;
+  final Color selectedColor;
   final VoidCallback onTap;
 
   @override
@@ -339,33 +466,41 @@ class _ModeTab extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: selected
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.labelLarge?.copyWith(
+                ? selectedColor.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
               color: selected
-                  ? const Color(0xFF1E2434)
-                  : Colors.white.withValues(alpha: 0.88),
-              fontWeight: FontWeight.w600,
+                  ? selectedColor.withValues(alpha: 0.35)
+                  : Colors.transparent,
             ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: selected ? selectedColor : ObTokens.textMuted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                sublabel,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: selected
+                      ? selectedColor.withValues(alpha: 0.7)
+                      : ObTokens.textMuted,
+                ),
+              ),
+            ],
           ),
         ),
       ),

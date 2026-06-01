@@ -77,5 +77,13 @@ class PostLoginPermissionService {
     } catch (error) {
       debugPrint('Failed to request local notification permissions: $error');
     }
+
+    try {
+      await NotificationService.requestIosPermissions().timeout(
+        const Duration(seconds: 20),
+      );
+    } catch (error) {
+      debugPrint('Failed to request iOS notification permissions: $error');
+    }
   }
 }

@@ -13,6 +13,8 @@ class HydrationRepository {
   static const _kHydrationPendingRetryCount = 'hydration_pending_retry_count';
   static const _kHydrationLastAckAtMs = 'hydration_last_ack_at_ms';
   static const _kHydrationLastPromptAtMs = 'hydration_last_prompt_at_ms';
+  static const _kHydrationSnoozeUntilMs = 'hydration_snooze_until_ms';
+  static const _kHydrationSkipDayDate = 'hydration_skip_day_date';
   static const _collectionUsers = 'users';
   static const _collectionHydrationLogs = 'hydration_logs';
 
@@ -189,5 +191,34 @@ class HydrationRepository {
   Future<int?> getLastPromptAtMillis() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_kHydrationLastPromptAtMs);
+  }
+
+  Future<void> setHydrationSnoozeUntil(int millisSinceEpoch) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kHydrationSnoozeUntilMs, millisSinceEpoch);
+  }
+
+  Future<int?> getHydrationSnoozeUntilMillis() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_kHydrationSnoozeUntilMs);
+  }
+
+  Future<void> clearHydrationSnooze() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kHydrationSnoozeUntilMs);
+  }
+
+  Future<void> skipTodayHydration(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    await prefs.setString(_kHydrationSkipDayDate, dateStr);
+  }
+
+  Future<bool> isHydrationSkippedToday(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(_kHydrationSkipDayDate);
+    if (stored == null) return false;
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return stored == dateStr;
   }
 }
