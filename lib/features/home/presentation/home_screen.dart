@@ -58,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Scaffold(
           body: ObBackground(
             child: Stack(
+              fit: StackFit.expand,
               children: [
                 const _AmbientGlow(alignment: Alignment(-1.15, -0.9)),
                 const _AmbientGlow(
@@ -76,8 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             .fade(duration: 320.ms)
                             .slideY(begin: -0.08, end: 0),
                         const SizedBox(height: 12),
-
-                        // Daily Motivation Card
                         if (_showMotivation)
                           _MotivationCard(
                                 onDismiss: () =>
@@ -87,20 +86,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               .animate()
                               .fade(delay: 80.ms, duration: 320.ms)
                               .slideY(begin: 0.08, end: 0),
-
                         const SizedBox(height: 12),
-
-                        // Moment Card
                         _MomentCard(
                               onTap: () => context.push(AppRoutes.stressScreen),
                             )
                             .animate()
                             .fade(delay: 200.ms, duration: 320.ms)
                             .slideY(begin: 0.08, end: 0),
-
                         const SizedBox(height: 12),
-
-                        // Feature Cards Grid
                         StaggeredGrid.count(
                               crossAxisCount: 2,
                               mainAxisSpacing: 8,
@@ -204,6 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             .animate()
                             .fade(delay: 260.ms, duration: 360.ms)
                             .slideY(begin: 0.1, end: 0),
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.12,
+                        ),
                       ],
                     ),
                   ),

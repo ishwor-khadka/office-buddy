@@ -146,6 +146,31 @@ class FinanceRepository {
     );
   }
 
+  Future<List<FinanceExpenseRecord>> loadExpensesInRange({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final firestore = FirebaseBootstrap.firestoreOrNull;
+    final user = FirebaseBootstrap.authOrNull?.currentUser;
+    if (firestore == null || user == null) return const <FinanceExpenseRecord>[];
+
+    final snapshot = await firestore
+        .collection(_collectionPath)
+        .doc(user.uid)
+        .collection(_expensesCollectionId)
+        .where(
+          'expenseDateMillis',
+          isGreaterThanOrEqualTo: from.millisecondsSinceEpoch,
+        )
+        .where('expenseDateMillis', isLessThan: to.millisecondsSinceEpoch)
+        .orderBy('expenseDateMillis', descending: true)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => FinanceExpenseRecord.fromJson(doc.data()))
+        .toList(growable: false);
+  }
+
   Future<List<FinanceExpenseRecord>> loadRecentExpenses({int limit = 5}) async {
     final firestore = FirebaseBootstrap.firestoreOrNull;
     final user = FirebaseBootstrap.authOrNull?.currentUser;
@@ -191,6 +216,7 @@ class FinanceRepository {
     required String name,
     required String amount,
     required bool isOwed,
+    String reason = '',
   }) async {
     final currency = await _currencyRepository.load();
     final colorValue = isOwed ? 0xFF5EB7F6 : 0xFFA78BFA;
@@ -198,6 +224,8 @@ class FinanceRepository {
         ? '👤'
         : name.trim().substring(0, 1).toUpperCase();
     final formattedAmount = formatMoney(amount, currency.symbol);
+    final baseTitle = isOwed ? 'Borrowed money' : 'Lent money';
+    final title = reason.isEmpty ? baseTitle : '$baseTitle · $reason';
 
     final person = FinancePersonRecord(
       name: name.trim(),
@@ -207,7 +235,7 @@ class FinanceRepository {
       initials: initial,
       transactions: [
         FinanceTransactionRecord(
-          title: isOwed ? 'Borrowed money' : 'Lent money',
+          title: title,
           dateLabel: _todayLabel(),
           amount: formattedAmount,
         ),
@@ -261,6 +289,79 @@ class FinanceRepository {
 
   String _dateLabel(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> settlePerson(String name) async {
+    final currency = await _currencyRepository.load();
+    final summary = await _loadSummaryWithSymbol(currency.symbol);
+    final updatedPeople =
+        summary.people.where((p) => p.name != name).toList(growable: false);
+
+    final oweTotal = formatMoneyFromNumber(
+      _sumAmounts(
+        updatedPeople.where((p) => p.isOwed).map((p) => p.amount),
+      ),
+      currency.symbol,
+    );
+    final getTotal = formatMoneyFromNumber(
+      _sumAmounts(
+        updatedPeople.where((p) => !p.isOwed).map((p) => p.amount),
+      ),
+      currency.symbol,
+    );
+
+    await saveSummary(
+      summary.copyWith(
+        people: updatedPeople,
+        oweTotal: oweTotal,
+        getTotal: getTotal,
+        lastActivityLabel: 'Settled balance with $name',
+      ),
+    );
+  }
+
+  Future<void> updatePersonAmount(String name, String newRawAmount) async {
+    final currency = await _currencyRepository.load();
+    final summary = await _loadSummaryWithSymbol(currency.symbol);
+    final updatedPeople = [...summary.people];
+    final index = updatedPeople.indexWhere((p) => p.name == name);
+    if (index < 0) return;
+
+    final person = updatedPeople[index];
+    final formattedAmount = formatMoney(newRawAmount, currency.symbol);
+    final newTx = FinanceTransactionRecord(
+      title: 'Balance updated',
+      dateLabel: _todayLabel(),
+      amount: newRawAmount,
+    );
+
+    updatedPeople[index] = person.copyWith(
+      amount: formattedAmount,
+      transactions: [newTx, ...person.transactions],
+    );
+
+    final oweTotal = formatMoneyFromNumber(
+      _sumAmounts(
+        updatedPeople.where((p) => p.isOwed).map((p) => p.amount),
+      ),
+      currency.symbol,
+    );
+    final getTotal = formatMoneyFromNumber(
+      _sumAmounts(
+        updatedPeople.where((p) => !p.isOwed).map((p) => p.amount),
+      ),
+      currency.symbol,
+    );
+
+    await saveSummary(
+      summary.copyWith(
+        people: updatedPeople,
+        totalTransactions: summary.totalTransactions + 1,
+        oweTotal: oweTotal,
+        getTotal: getTotal,
+        lastActivityLabel: 'Updated balance with $name',
+      ),
+    );
   }
 
   String? _normalizeAmountForFirestore(String raw) {

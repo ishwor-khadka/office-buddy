@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import '../../../core/ui/ui_refresh_bus.dart';
 
 import '../../../core/finance/finance_repository.dart';
 import '../../../core/settings/currency_preference.dart';
@@ -120,8 +119,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                         selected:
                                             _selectedCategory == category,
                                         onTap: () {
-                                          UiRefreshBus.instance.update(
-                                            this,
+                                          setState(
                                             () =>
                                                 _selectedCategory = category,
                                           );
@@ -275,7 +273,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => UiRefreshBus.instance.update(this, () {}),
+            onChanged: (_) => setState(() {}),
             style: theme.textTheme.displaySmall?.copyWith(
               color: ObTokens.text,
               fontWeight: FontWeight.w800,
@@ -320,10 +318,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 lastDate: DateTime(2100),
               );
               if (picked == null || !mounted) return;
-              UiRefreshBus.instance.update(
-                this,
-                () => _selectedDate = picked,
-              );
+              setState(() => _selectedDate = picked);
             },
       borderRadius: BorderRadius.circular(16),
       child: ObGlass(
@@ -369,7 +364,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       child: ElevatedButton(
         onPressed: canSave
             ? () async {
-                UiRefreshBus.instance.update(this, () => _saving = true);
+                setState(() => _saving = true);
                 final messenger = ScaffoldMessenger.of(context);
                 try {
                   await _repository.addExpense(
@@ -392,7 +387,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   );
                 } finally {
                   if (mounted) {
-                    UiRefreshBus.instance.update(this, () => _saving = false);
+                    setState(() => _saving = false);
                   }
                 }
               }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
@@ -39,14 +40,39 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<CurrencyPreference>? _currencyFuture;
   bool _notificationsGranted = true;
   bool _exactAlarmGranted = true;
-  bool _sendingTest = false;
+  late final ValueNotifier<bool> _use24HourNotifier;
+
+  bool get _use24Hour => _use24HourNotifier.value;
+
+  static const _k24HourPref = 'office_time_format_24h';
 
   @override
   void initState() {
     super.initState();
+    _use24HourNotifier = ValueNotifier<bool>(false);
     _scheduleFuture = _scheduleRepository.load();
     _currencyFuture = _currencyRepository.load();
     _checkNotificationPermissions();
+    _loadTimeFormatPref();
+  }
+
+  @override
+  void dispose() {
+    _use24HourNotifier.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadTimeFormatPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    _use24HourNotifier.value = prefs.getBool(_k24HourPref) ?? false;
+  }
+
+  Future<void> _saveTimeFormatPref(bool use24Hour) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_k24HourPref, use24Hour);
   }
 
   Future<void> _checkNotificationPermissions() async {
@@ -57,29 +83,6 @@ class _AccountScreenState extends State<AccountScreen> {
       _notificationsGranted = notifStatus.isGranted;
       _exactAlarmGranted = exactStatus.isGranted;
     });
-  }
-
-  Future<void> _sendTestNotification() async {
-    UiRefreshBus.instance.update(this, () => _sendingTest = true);
-    try {
-      await NotificationService.showBreakReminder(
-        id: 999999,
-        title: 'Test notification',
-        body: 'Your break and hydration reminders are working.',
-        payload: AppRoutes.breakScreen,
-      );
-    } finally {
-      if (mounted) {
-        UiRefreshBus.instance.update(this, () => _sendingTest = false);
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    super.dispose();
   }
 
   Future<void> _login() async {
@@ -178,10 +181,16 @@ class _AccountScreenState extends State<AccountScreen> {
     return true;
   }
 
-  String _formatTime(int minutes) {
-    final hours = (minutes ~/ 60).toString().padLeft(2, '0');
+  String _formatTime(int minutes, {bool? use24Hour}) {
+    final is24 = use24Hour ?? _use24Hour;
     final mins = (minutes % 60).toString().padLeft(2, '0');
-    return '$hours:$mins';
+    final totalHours = minutes ~/ 60;
+    if (is24) {
+      return '${totalHours.toString().padLeft(2, '0')}:$mins';
+    }
+    final period = totalHours < 12 ? 'AM' : 'PM';
+    final displayHour = totalHours % 12 == 0 ? 12 : totalHours % 12;
+    return '$displayHour:$mins $period';
   }
 
   String _formatOffDays(List<int> offDays) {
@@ -209,6 +218,12 @@ class _AccountScreenState extends State<AccountScreen> {
         hour: initialMinutes ~/ 60,
         minute: initialMinutes % 60,
       ),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(alwaysUse24HourFormat: _use24Hour),
+        child: child!,
+      ),
     );
     if (picked == null) return;
     onPicked(picked.hour * 60 + picked.minute);
@@ -220,6 +235,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final offDays = current.offDays.toSet();
     int? lunchStart = current.lunchStartMinutes;
     int? lunchEnd = current.lunchEndMinutes;
+    var sheetUse24Hour = _use24Hour;
 
     final result = await showModalBottomSheet<OfficeSchedule>(
       context: context,
@@ -231,10 +247,10 @@ class _AccountScreenState extends State<AccountScreen> {
             return SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
-                  top: 20,
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+                  top: 12,
                 ),
                 child: ObGlass(
                   child: SingleChildScrollView(
@@ -242,27 +258,118 @@ class _AccountScreenState extends State<AccountScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Drag handle
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Header
                         Row(
                           children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: ObTokens.mintDeep.withValues(
+                                  alpha: 0.14,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                LucideIcons.building2,
+                                size: 18,
+                                color: ObTokens.mintDeep,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'Update Office Timing',
-                                style: Theme.of(context).textTheme.titleLarge,
+                                'Office Schedule',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w700),
                               ),
                             ),
                             IconButton(
                               onPressed: () => Navigator.of(sheetContext).pop(),
-                              icon: const Icon(Icons.close),
+                              icon: Icon(
+                                LucideIcons.x,
+                                size: 18,
+                                color: ObTokens.textMuted,
+                              ),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.black.withValues(
+                                  alpha: 0.06,
+                                ),
+                                shape: const CircleBorder(),
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 20),
+
+                        // Time format toggle
+                        _SheetSectionLabel(label: 'TIME FORMAT'),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                LucideIcons.clock4,
+                                size: 16,
+                                color: ObTokens.textMuted,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '24-hour format',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ),
+                              Switch(
+                                value: sheetUse24Hour,
+                                activeThumbColor: ObTokens.mintDeep,
+                                onChanged: (value) {
+                                  setSheetState(() => sheetUse24Hour = value);
+                                  _use24HourNotifier.value = value;
+                                  _saveTimeFormatPref(value);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Work hours
+                        _SheetSectionLabel(label: 'WORK HOURS'),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(
                               child: _OfficeTimeTile(
                                 label: 'Start',
-                                value: _formatTime(startMinutes),
+                                value: _formatTime(
+                                  startMinutes,
+                                  use24Hour: sheetUse24Hour,
+                                ),
                                 onTap: () => _pickTime(
                                   context: sheetContext,
                                   initialMinutes: startMinutes,
@@ -276,7 +383,10 @@ class _AccountScreenState extends State<AccountScreen> {
                             Expanded(
                               child: _OfficeTimeTile(
                                 label: 'End',
-                                value: _formatTime(endMinutes),
+                                value: _formatTime(
+                                  endMinutes,
+                                  use24Hour: sheetUse24Hour,
+                                ),
                                 onTap: () => _pickTime(
                                   context: sheetContext,
                                   initialMinutes: endMinutes,
@@ -288,64 +398,131 @@ class _AccountScreenState extends State<AccountScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Off days',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        const SizedBox(height: 20),
+
+                        // Off days
+                        _SheetSectionLabel(label: 'DAYS OFF'),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: _weekdayLabels.entries.map((entry) {
                             final selected = offDays.contains(entry.key);
-                            return FilterChip(
-                              label: Text(entry.value),
-                              selected: selected,
-                              showCheckmark: false,
-                              onSelected: (_) {
+                            return GestureDetector(
+                              onTap: () {
                                 setSheetState(() {
                                   if (!offDays.add(entry.key)) {
                                     offDays.remove(entry.key);
                                   }
                                 });
                               },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? ObTokens.mintDeep
+                                      : Colors.white.withValues(alpha: 0.45),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: selected
+                                        ? ObTokens.mintDeep
+                                        : Colors.white.withValues(alpha: 0.5),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Text(
+                                  entry.value,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: selected
+                                            ? Colors.white
+                                            : ObTokens.text,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
                             );
                           }).toList(),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Lunch break (suppresses reminders)',
-                                style: Theme.of(context).textTheme.titleMedium,
+                        const SizedBox(height: 20),
+
+                        // Lunch break
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                LucideIcons.utensils,
+                                size: 16,
+                                color: ObTokens.textMuted,
                               ),
-                            ),
-                            Switch(
-                              value: lunchStart != null && lunchEnd != null,
-                              onChanged: (enabled) {
-                                setSheetState(() {
-                                  if (enabled) {
-                                    lunchStart = 12 * 60;
-                                    lunchEnd = 13 * 60;
-                                  } else {
-                                    lunchStart = null;
-                                    lunchEnd = null;
-                                  }
-                                });
-                              },
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Lunch break',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    Text(
+                                      'Suppresses reminders',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: ObTokens.textMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: lunchStart != null && lunchEnd != null,
+                                activeThumbColor: ObTokens.mintDeep,
+                                onChanged: (enabled) {
+                                  setSheetState(() {
+                                    if (enabled) {
+                                      lunchStart = 12 * 60;
+                                      lunchEnd = 13 * 60;
+                                    } else {
+                                      lunchStart = null;
+                                      lunchEnd = null;
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                         if (lunchStart != null && lunchEnd != null) ...[
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Row(
                             children: [
                               Expanded(
                                 child: _OfficeTimeTile(
                                   label: 'Lunch start',
-                                  value: _formatTime(lunchStart!),
+                                  value: _formatTime(
+                                    lunchStart!,
+                                    use24Hour: sheetUse24Hour,
+                                  ),
                                   onTap: () => _pickTime(
                                     context: sheetContext,
                                     initialMinutes: lunchStart!,
@@ -359,7 +536,10 @@ class _AccountScreenState extends State<AccountScreen> {
                               Expanded(
                                 child: _OfficeTimeTile(
                                   label: 'Lunch end',
-                                  value: _formatTime(lunchEnd!),
+                                  value: _formatTime(
+                                    lunchEnd!,
+                                    use24Hour: sheetUse24Hour,
+                                  ),
                                   onTap: () => _pickTime(
                                     context: sheetContext,
                                     initialMinutes: lunchEnd!,
@@ -372,8 +552,13 @@ class _AccountScreenState extends State<AccountScreen> {
                             ],
                           ),
                         ],
-                        const SizedBox(height: 18),
-                        ElevatedButton(
+                        const SizedBox(height: 24),
+
+                        // Actions
+                        _PrimaryButton(
+                          label: 'Save Changes',
+                          icon: LucideIcons.check,
+                          color: ObTokens.mintDeep,
                           onPressed: () {
                             Navigator.of(sheetContext).pop(
                               OfficeSchedule(
@@ -385,7 +570,11 @@ class _AccountScreenState extends State<AccountScreen> {
                               ),
                             );
                           },
-                          child: const Text('Save Changes'),
+                        ),
+                        const SizedBox(height: 8),
+                        _GhostButton(
+                          label: 'Cancel',
+                          onPressed: () => Navigator.of(sheetContext).pop(),
                         ),
                       ],
                     ),
@@ -581,85 +770,82 @@ class _AccountScreenState extends State<AccountScreen> {
     return Column(
       children: [
         const SizedBox(height: 12),
-        _buildSignInHero(theme)
-            .animate()
-            .fade(duration: 400.ms)
-            .slideY(begin: -0.06, end: 0),
+        _buildSignInHero(
+          theme,
+        ).animate().fade(duration: 400.ms).slideY(begin: -0.06, end: 0),
         const SizedBox(height: 24),
         ObGlass(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _SectionHeader(
-                icon: LucideIcons.logIn,
-                label: 'Sign In',
-                iconColor: ObTokens.iris,
-              ),
-              const SizedBox(height: 16),
-              _StyledTextField(
-                controller: _email,
-                label: 'Email',
-                icon: LucideIcons.mail,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 12),
-              _StyledTextField(
-                controller: _password,
-                label: 'Password',
-                icon: LucideIcons.lock,
-                obscureText: _obscurePassword,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword
-                        ? LucideIcons.eyeOff
-                        : LucideIcons.eye,
-                    size: 18,
-                    color: ObTokens.textMuted,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SectionHeader(
+                    icon: LucideIcons.logIn,
+                    label: 'Sign In',
+                    iconColor: ObTokens.iris,
                   ),
-                  onPressed: () => UiRefreshBus.instance.update(
-                    this,
-                    () => _obscurePassword = !_obscurePassword,
+                  const SizedBox(height: 16),
+                  _StyledTextField(
+                    controller: _email,
+                    label: 'Email',
+                    icon: LucideIcons.mail,
+                    keyboardType: TextInputType.emailAddress,
                   ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _PrimaryButton(
-                label: _loading ? 'Signing in…' : 'Sign In',
-                icon: LucideIcons.logIn,
-                onPressed: _loading ? null : _login,
-                color: ObTokens.iris,
-              ),
-              const SizedBox(height: 10),
-              _GhostButton(
-                label: 'Create account',
-                onPressed: _loading ? null : _signup,
-              ),
-              if (auth == null) ...[
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      LucideIcons.alertCircle,
-                      size: 14,
-                      color: theme.colorScheme.error,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Firebase is not configured yet.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.error,
+                  const SizedBox(height: 12),
+                  _StyledTextField(
+                    controller: _password,
+                    label: 'Password',
+                    icon: LucideIcons.lock,
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? LucideIcons.eyeOff : LucideIcons.eye,
+                        size: 18,
+                        color: ObTokens.textMuted,
+                      ),
+                      onPressed: () => UiRefreshBus.instance.update(
+                        this,
+                        () => _obscurePassword = !_obscurePassword,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  _PrimaryButton(
+                    label: _loading ? 'Signing in…' : 'Sign In',
+                    icon: LucideIcons.logIn,
+                    onPressed: _loading ? null : _login,
+                    color: ObTokens.iris,
+                  ),
+                  const SizedBox(height: 10),
+                  _GhostButton(
+                    label: 'Create account',
+                    onPressed: _loading ? null : _signup,
+                  ),
+                  if (auth == null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.alertCircle,
+                          size: 14,
+                          color: theme.colorScheme.error,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Firebase is not configured yet.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
-                ),
-              ],
-            ],
-          ),
-        ).animate().fade(duration: 480.ms, delay: 80.ms).slideY(
-          begin: 0.06,
-          end: 0,
-        ),
+                ],
+              ),
+            )
+            .animate()
+            .fade(duration: 480.ms, delay: 80.ms)
+            .slideY(begin: 0.06, end: 0),
       ],
     );
   }
@@ -688,7 +874,10 @@ class _AccountScreenState extends State<AccountScreen> {
           child: const Icon(LucideIcons.user, color: Colors.white, size: 36),
         ),
         const SizedBox(height: 16),
-        Text('Welcome Back', style: theme.textTheme.displayLarge?.copyWith(fontSize: 26)),
+        Text(
+          'Welcome Back',
+          style: theme.textTheme.displayLarge?.copyWith(fontSize: 26),
+        ),
         const SizedBox(height: 6),
         Text(
           'Sign in to sync your health data across devices.',
@@ -705,64 +894,93 @@ class _AccountScreenState extends State<AccountScreen> {
     return Column(
       children: [
         const SizedBox(height: 12),
-        _buildProfileHero(theme, user, initials)
-            .animate()
-            .fade(duration: 400.ms)
-            .slideY(begin: -0.06, end: 0),
+        _buildProfileHero(
+          theme,
+          user,
+          initials,
+        ).animate().fade(duration: 400.ms).slideY(begin: -0.06, end: 0),
         const SizedBox(height: 20),
-        FutureBuilder<OfficeSchedule>(
-          future: _scheduleFuture,
-          builder: (context, snapshot) {
-            final schedule =
-                snapshot.data ??
-                const OfficeSchedule(
-                  workStartMinutes: 9 * 60,
-                  workEndMinutes: 18 * 60,
-                  offDays: <int>[6, 7],
+        ValueListenableBuilder<bool>(
+          valueListenable: _use24HourNotifier,
+          builder: (context, use24Hour, _) {
+            return FutureBuilder<OfficeSchedule>(
+              future: _scheduleFuture,
+              builder: (context, snapshot) {
+                final schedule =
+                    snapshot.data ??
+                    const OfficeSchedule(
+                      workStartMinutes: 9 * 60,
+                      workEndMinutes: 18 * 60,
+                      offDays: <int>[6, 7],
+                    );
+                return _SettingsCard(
+                  icon: LucideIcons.building2,
+                  title: 'Office Schedule',
+                  iconColor: ObTokens.mintDeep,
+                  children: [
+                    _InfoTile(
+                      label: 'Work hours',
+                      value:
+                          '${_formatTime(schedule.workStartMinutes)} – ${_formatTime(schedule.workEndMinutes)}',
+                      icon: LucideIcons.clock,
+                    ),
+                    const SizedBox(height: 8),
+                    _InfoTile(
+                      label: 'Days off',
+                      value: _formatOffDays(schedule.offDays),
+                      icon: LucideIcons.calendarOff,
+                    ),
+                    if (schedule.lunchStartMinutes != null &&
+                        schedule.lunchEndMinutes != null) ...[
+                      const SizedBox(height: 8),
+                      _InfoTile(
+                        label: 'Lunch break',
+                        value:
+                            '${_formatTime(schedule.lunchStartMinutes!)} – ${_formatTime(schedule.lunchEndMinutes!)}',
+                        icon: LucideIcons.utensils,
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(
+                          LucideIcons.clock4,
+                          size: 16,
+                          color: ObTokens.textMuted,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '24-hour format',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                        Switch(
+                          value: use24Hour,
+                          activeThumbColor: ObTokens.mintDeep,
+                          onChanged: (value) {
+                            _use24HourNotifier.value = value;
+                            _saveTimeFormatPref(value);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _PrimaryButton(
+                      label: 'Edit Schedule',
+                      icon: LucideIcons.pencil,
+                      onPressed:
+                          snapshot.connectionState == ConnectionState.waiting
+                          ? null
+                          : () => _editOfficeSchedule(schedule),
+                      color: ObTokens.mintDeep,
+                    ),
+                  ],
                 );
-            return _SettingsCard(
-              icon: LucideIcons.building2,
-              title: 'Office Schedule',
-              iconColor: ObTokens.mintDeep,
-              children: [
-                _InfoTile(
-                  label: 'Work hours',
-                  value:
-                      '${_formatTime(schedule.workStartMinutes)} – ${_formatTime(schedule.workEndMinutes)}',
-                  icon: LucideIcons.clock,
-                ),
-                const SizedBox(height: 8),
-                _InfoTile(
-                  label: 'Days off',
-                  value: _formatOffDays(schedule.offDays),
-                  icon: LucideIcons.calendarOff,
-                ),
-                if (schedule.lunchStartMinutes != null &&
-                    schedule.lunchEndMinutes != null) ...[
-                  const SizedBox(height: 8),
-                  _InfoTile(
-                    label: 'Lunch break',
-                    value:
-                        '${_formatTime(schedule.lunchStartMinutes!)} – ${_formatTime(schedule.lunchEndMinutes!)}',
-                    icon: LucideIcons.utensils,
-                  ),
-                ],
-                const SizedBox(height: 16),
-                _PrimaryButton(
-                  label: 'Edit Schedule',
-                  icon: LucideIcons.pencil,
-                  onPressed: snapshot.connectionState == ConnectionState.waiting
-                      ? null
-                      : () => _editOfficeSchedule(schedule),
-                  color: ObTokens.mintDeep,
-                ),
-              ],
+              },
             );
           },
-        ).animate().fade(duration: 400.ms, delay: 60.ms).slideY(
-          begin: 0.06,
-          end: 0,
-        ),
+        ).animate().fade(duration: 400.ms, delay: 60.ms).slideY(begin: 0.06, end: 0),
         const SizedBox(height: 14),
         _buildNotificationsCard(theme)
             .animate()
@@ -770,42 +988,43 @@ class _AccountScreenState extends State<AccountScreen> {
             .slideY(begin: 0.06, end: 0),
         const SizedBox(height: 14),
         FutureBuilder<CurrencyPreference>(
-          future: _currencyFuture,
-          builder: (context, snapshot) {
-            final currency =
-                snapshot.data ?? CurrencyPreference.defaultPreference;
-            return _SettingsCard(
-              icon: LucideIcons.badgeDollarSign,
-              title: 'Currency',
-              iconColor: ObTokens.sky,
-              children: [
-                _InfoTile(
-                  label: 'Selected',
-                  value: '${currency.displayLabel}  ${currency.name}',
-                  icon: LucideIcons.coins,
-                ),
-                const SizedBox(height: 8),
-                _InfoTile(
-                  label: 'Code',
-                  value: currency.code,
-                  icon: LucideIcons.tag,
-                ),
-                const SizedBox(height: 16),
-                _PrimaryButton(
-                  label: 'Change Currency',
-                  icon: LucideIcons.pencil,
-                  onPressed: snapshot.connectionState == ConnectionState.waiting
-                      ? null
-                      : () => _editCurrencyPreference(currency),
-                  color: ObTokens.sky,
-                ),
-              ],
-            );
-          },
-        ).animate().fade(duration: 400.ms, delay: 120.ms).slideY(
-          begin: 0.06,
-          end: 0,
-        ),
+              future: _currencyFuture,
+              builder: (context, snapshot) {
+                final currency =
+                    snapshot.data ?? CurrencyPreference.defaultPreference;
+                return _SettingsCard(
+                  icon: LucideIcons.badgeDollarSign,
+                  title: 'Currency',
+                  iconColor: ObTokens.sky,
+                  children: [
+                    _InfoTile(
+                      label: 'Selected',
+                      value: '${currency.displayLabel}  ${currency.name}',
+                      icon: LucideIcons.coins,
+                    ),
+                    const SizedBox(height: 8),
+                    _InfoTile(
+                      label: 'Code',
+                      value: currency.code,
+                      icon: LucideIcons.tag,
+                    ),
+                    const SizedBox(height: 16),
+                    _PrimaryButton(
+                      label: 'Change Currency',
+                      icon: LucideIcons.pencil,
+                      onPressed:
+                          snapshot.connectionState == ConnectionState.waiting
+                          ? null
+                          : () => _editCurrencyPreference(currency),
+                      color: ObTokens.sky,
+                    ),
+                  ],
+                );
+              },
+            )
+            .animate()
+            .fade(duration: 400.ms, delay: 120.ms)
+            .slideY(begin: 0.06, end: 0),
         const SizedBox(height: 24),
         ObGlass(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -819,66 +1038,59 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
+  Future<void> _requestNotificationPermission() async {
+    await Permission.notification.request();
+    await _checkNotificationPermissions();
+  }
+
   Widget _buildNotificationsCard(ThemeData theme) {
-    final hasProblem = !_notificationsGranted || !_exactAlarmGranted;
     return _SettingsCard(
       icon: LucideIcons.bell,
       title: 'Notifications',
       iconColor: ObTokens.iris,
       children: [
-        if (hasProblem) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: theme.colorScheme.error.withValues(alpha: 0.4),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  LucideIcons.alertTriangle,
-                  size: 16,
-                  color: theme.colorScheme.error,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    !_notificationsGranted
-                        ? 'Notification permission is off. Reminders won\'t show.'
-                        : 'Exact alarms disabled. Hydration reminders may be delayed.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        if (!_notificationsGranted) ...[
+          _NotifWarningBanner(
+            theme: theme,
+            message: 'Notification permission is off. Reminders won\'t show.',
           ),
           const SizedBox(height: 10),
           _PrimaryButton(
-            label: 'Open Notification Settings',
-            icon: LucideIcons.settings,
-            onPressed: () => openAppSettings(),
-            color: theme.colorScheme.error,
+            label: 'Allow Notifications',
+            icon: LucideIcons.bellRing,
+            onPressed: _requestNotificationPermission,
+            color: ObTokens.iris,
           ),
-          const SizedBox(height: 8),
         ] else ...[
-          _InfoTile(
-            label: 'Status',
-            value: 'Active',
-            icon: LucideIcons.checkCircle,
-          ),
-          const SizedBox(height: 8),
+          if (!_exactAlarmGranted) ...[
+            _NotifWarningBanner(
+              theme: theme,
+              message:
+                  'Exact alarms disabled. Hydration reminders may be delayed.',
+            ),
+            const SizedBox(height: 10),
+            _PrimaryButton(
+              label: 'Open Settings',
+              icon: LucideIcons.settings,
+              onPressed: openAppSettings,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 8),
+          ] else ...[
+            _InfoTile(
+              label: 'Status',
+              value: 'Active',
+              icon: LucideIcons.checkCircle,
+            ),
+            const SizedBox(height: 8),
+          ],
+          // _PrimaryButton(
+          //   label: _sendingTest ? 'Sending…' : 'Send Test Notification',
+          //   icon: LucideIcons.bellRing,
+          //   onPressed: _sendingTest ? null : _sendTestNotification,
+          //   color: ObTokens.iris,
+          // ),
         ],
-        _PrimaryButton(
-          label: _sendingTest ? 'Sending…' : 'Send Test Notification',
-          icon: LucideIcons.bellRing,
-          onPressed: _sendingTest ? null : _sendTestNotification,
-          color: ObTokens.iris,
-        ),
       ],
     );
   }
@@ -985,10 +1197,7 @@ class _AmbientBlob extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 }
@@ -1078,9 +1287,7 @@ class _InfoTile extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: ObTokens.textMuted),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(label, style: theme.textTheme.bodyMedium),
-          ),
+          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
           Text(
             value,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -1160,7 +1367,11 @@ class _GhostButton extends StatelessWidget {
 }
 
 class _DangerButton extends StatelessWidget {
-  const _DangerButton({required this.label, required this.icon, required this.onPressed});
+  const _DangerButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
 
   final String label;
   final IconData icon;
@@ -1234,9 +1445,7 @@ class _StyledTextField extends StatelessWidget {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: Colors.white.withValues(alpha: 0.6),
-          ),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -1279,6 +1488,63 @@ class _OfficeTimeTile extends StatelessWidget {
             Text(value, style: theme.textTheme.titleLarge),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NotifWarningBanner extends StatelessWidget {
+  const _NotifWarningBanner({required this.theme, required this.message});
+
+  final ThemeData theme;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: theme.colorScheme.error.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            LucideIcons.alertTriangle,
+            size: 16,
+            color: theme.colorScheme.error,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetSectionLabel extends StatelessWidget {
+  const _SheetSectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: ObTokens.textMuted,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.1,
       ),
     );
   }

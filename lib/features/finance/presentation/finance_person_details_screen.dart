@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/finance/finance_repository.dart';
 import '../../../core/finance/money_formatter.dart';
 import '../../../core/settings/currency_preference.dart';
 import '../../../core/settings/currency_preference_repository.dart';
@@ -10,12 +11,37 @@ import '../../../core/ui/ob_glass.dart';
 import '../../../core/ui/ob_tokens.dart';
 import 'finance_tracker_screen.dart';
 
-class FinancePersonDetailsScreen extends StatelessWidget {
-  FinancePersonDetailsScreen({super.key, required this.args});
+class FinancePersonDetailsScreen extends StatefulWidget {
+  const FinancePersonDetailsScreen({super.key, required this.args});
 
   final FinancePersonDetailsArgs args;
-  final Future<CurrencyPreference> _currencyFuture =
-      CurrencyPreferenceRepository().load();
+
+  @override
+  State<FinancePersonDetailsScreen> createState() =>
+      _FinancePersonDetailsScreenState();
+}
+
+class _FinancePersonDetailsScreenState
+    extends State<FinancePersonDetailsScreen> {
+  late final Future<CurrencyPreference> _currencyFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _currencyFuture = CurrencyPreferenceRepository().load();
+  }
+
+  Future<void> _showBalanceSheet() async {
+    final didChange = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _BalanceSheet(args: widget.args),
+    );
+    if (didChange == true && mounted) {
+      context.pop(true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +50,7 @@ class FinancePersonDetailsScreen extends StatelessWidget {
       builder: (context, snapshot) {
         final currency = snapshot.data ?? CurrencyPreference.defaultPreference;
         final theme = Theme.of(context);
-        final owed = args.isOwed;
+        final owed = widget.args.isOwed;
         final amountColor = owed
             ? const Color(0xFFE71D3D)
             : const Color(0xFF0BA24D);
@@ -70,7 +96,7 @@ class FinancePersonDetailsScreen extends StatelessWidget {
                               child: _StatCard(
                                 icon: LucideIcons.repeat,
                                 title: 'Transactions',
-                                value: '${args.transactions.length}',
+                                value: '${widget.args.transactions.length}',
                                 iconColor: ObTokens.iris,
                               ),
                             ),
@@ -79,7 +105,9 @@ class FinancePersonDetailsScreen extends StatelessWidget {
                               child: _StatCard(
                                 icon: LucideIcons.clock,
                                 title: 'Last Activity',
-                                value: '2 days ago',
+                                value: widget.args.transactions.isNotEmpty
+                                    ? widget.args.transactions.first.dateLabel
+                                    : '—',
                                 iconColor: ObTokens.sky,
                               ),
                             ),
@@ -95,7 +123,9 @@ class FinancePersonDetailsScreen extends StatelessWidget {
                                   Container(
                                     padding: const EdgeInsets.all(7),
                                     decoration: BoxDecoration(
-                                      color: ObTokens.iris.withValues(alpha: 0.12),
+                                      color: ObTokens.iris.withValues(
+                                        alpha: 0.12,
+                                      ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Icon(
@@ -115,7 +145,7 @@ class FinancePersonDetailsScreen extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 14),
-                              ...args.transactions.map(
+                              ...widget.args.transactions.map(
                                 (transaction) => Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: _TransactionRow(
@@ -129,6 +159,19 @@ class FinancePersonDetailsScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              if (widget.args.transactions.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'No transactions yet.',
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(color: ObTokens.textMuted),
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -136,7 +179,7 @@ class FinancePersonDetailsScreen extends StatelessWidget {
                         SizedBox(
                           height: 54,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: _showBalanceSheet,
                             style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.zero,
                               elevation: 0,
@@ -170,7 +213,7 @@ class FinancePersonDetailsScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'Settle Balance',
+                                      'Manage Balance',
                                       style: theme.textTheme.titleMedium
                                           ?.copyWith(
                                             color: Colors.white,
@@ -247,10 +290,10 @@ class FinancePersonDetailsScreen extends StatelessWidget {
             height: 88,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: args.color,
+              color: widget.args.color,
               boxShadow: [
                 BoxShadow(
-                  color: args.color.withValues(alpha: 0.32),
+                  color: widget.args.color.withValues(alpha: 0.32),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -258,14 +301,14 @@ class FinancePersonDetailsScreen extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                args.initials,
+                widget.args.initials,
                 style: const TextStyle(fontSize: 38),
               ),
             ),
           ),
           const SizedBox(height: 14),
           Text(
-            args.name,
+            widget.args.name,
             style: theme.textTheme.headlineMedium?.copyWith(
               color: ObTokens.text,
               fontWeight: FontWeight.w700,
@@ -291,7 +334,7 @@ class FinancePersonDetailsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  formatMoney(args.amount, currency.symbol),
+                  formatMoney(widget.args.amount, currency.symbol),
                   style: theme.textTheme.displaySmall?.copyWith(
                     color: amountColor,
                     fontWeight: FontWeight.w800,
@@ -302,6 +345,240 @@ class FinancePersonDetailsScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BalanceSheet extends StatefulWidget {
+  const _BalanceSheet({required this.args});
+  final FinancePersonDetailsArgs args;
+
+  @override
+  State<_BalanceSheet> createState() => _BalanceSheetState();
+}
+
+class _BalanceSheetState extends State<_BalanceSheet> {
+  final _repo = FinanceRepository();
+  late final TextEditingController _amountCtrl;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountCtrl = TextEditingController(
+      text: extractMoneyValue(widget.args.amount),
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _settle() async {
+    setState(() => _saving = true);
+    try {
+      await _repo.settlePerson(widget.args.name);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _update() async {
+    final raw = _amountCtrl.text.trim();
+    if (raw.isEmpty || double.tryParse(raw) == null) return;
+    setState(() => _saving = true);
+    try {
+      await _repo.updatePersonAmount(widget.args.name, raw);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final owed = widget.args.isOwed;
+    final settleColor = owed
+        ? const Color(0xFFE71D3D)
+        : const Color(0xFF0BA24D);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: ObTokens.canvas,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Manage Balance',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: ObTokens.text,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              widget.args.name,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: ObTokens.textMuted,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ObGlass(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        LucideIcons.banknote,
+                        size: 14,
+                        color: ObTokens.textMuted,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Remaining Amount',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: ObTokens.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: ObTokens.text,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _update,
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [ObTokens.sky, ObTokens.iris],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Container(
+                    alignment: Alignment.center,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                LucideIcons.save,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Update Amount',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 50,
+              child: OutlinedButton(
+                onPressed: _saving ? null : _settle,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: settleColor.withValues(alpha: 0.6)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(LucideIcons.checkCircle, size: 16, color: settleColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Settle Full Balance',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: settleColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -21,6 +21,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
       CurrencyPreferenceRepository();
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
+  late final TextEditingController _reasonController;
   final ValueNotifier<int> _refreshTick = ValueNotifier<int>(0);
   int _selectedTab = 0;
   bool _saving = false;
@@ -31,6 +32,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
     super.initState();
     _nameController = TextEditingController();
     _amountController = TextEditingController(text: '100');
+    _reasonController = TextEditingController();
     _currencyFuture = _currencyRepository.load();
   }
 
@@ -38,6 +40,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
   void dispose() {
     _nameController.dispose();
     _amountController.dispose();
+    _reasonController.dispose();
     _refreshTick.dispose();
     super.dispose();
   }
@@ -164,6 +167,33 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
                                               fontSize: 16,
                                               fontWeight: FontWeight.w400,
                                             ),
+                                            isDense: true,
+                                            border: InputBorder.none,
+                                            enabledBorder: InputBorder.none,
+                                            focusedBorder: InputBorder.none,
+                                            contentPadding: EdgeInsets.zero,
+                                          ),
+                                        ),
+                                      ),
+                                      Divider(
+                                        height: 24,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                      _InputField(
+                                        label: 'Reason',
+                                        icon: LucideIcons.fileText,
+                                        child: TextField(
+                                          controller: _reasonController,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                color: ObTokens.text,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                          decoration: const InputDecoration(
+                                            hintText:
+                                                'e.g. dinner, taxi, trip...',
                                             isDense: true,
                                             border: InputBorder.none,
                                             enabledBorder: InputBorder.none,
@@ -355,6 +385,7 @@ class _LendBorrowScreenState extends State<LendBorrowScreen> {
                     name: _nameController.text,
                     amount: _amountController.text,
                     isOwed: _selectedTab == 0,
+                    reason: _reasonController.text.trim(),
                   );
                   if (!mounted) return;
                   navigator.pop(true);

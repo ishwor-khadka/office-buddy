@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
-import '../../../core/ui/ui_refresh_bus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -40,7 +39,7 @@ class _FinanceTrackerScreenState extends State<FinanceTrackerScreen> {
   }
 
   Future<void> _refreshSummary() async {
-    UiRefreshBus.instance.update(this, () {
+    setState(() {
       _summaryFuture = _repository.loadSummary();
       _expensesFuture = _repository.loadRecentExpenses();
       _currencyFuture = _currencyRepository.load();
@@ -257,11 +256,22 @@ class _FinanceTrackerScreenState extends State<FinanceTrackerScreen> {
                                                 person: _Person.fromRecord(
                                                   person,
                                                 ),
-                                                onTap: () => context.push(
-                                                  AppRoutes.financePersonScreen,
-                                                  extra: FinancePersonDetailsArgs
-                                                      .fromRecord(person),
-                                                ),
+                                                onTap: () async {
+                                                final changed = await context
+                                                    .push<bool>(
+                                                      AppRoutes
+                                                          .financePersonScreen,
+                                                      extra:
+                                                          FinancePersonDetailsArgs
+                                                              .fromRecord(
+                                                                person,
+                                                              ),
+                                                    );
+                                                if (changed == true &&
+                                                    mounted) {
+                                                  await _refreshSummary();
+                                                }
+                                              },
                                               ),
                                             ),
                                           )
@@ -408,6 +418,43 @@ class _Header extends StatelessWidget {
               color: ObTokens.text,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.4,
+            ),
+          ),
+        ),
+        InkWell(
+          onTap: () => context.push(AppRoutes.financeLendBorrowAnalyticsScreen),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
+            ),
+            child: const Icon(
+              LucideIcons.heartHandshake,
+              color: ObTokens.mintDeep,
+              size: 18,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        InkWell(
+          onTap: () => context.push(AppRoutes.financeAnalyticsScreen),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
+            ),
+            child: const Icon(
+              LucideIcons.barChart2,
+              color: ObTokens.iris,
+              size: 18,
             ),
           ),
         ),

@@ -204,24 +204,23 @@ class _CategoryStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ObGlass(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: _categories.map((cat) {
-            final isSelected = selected == cat;
-            final color = cat == 'All' ? ObTokens.iris : _bodyPartColor(cat);
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
+    return SizedBox(
+      height: 74,
+      child: Row(
+        children: _categories.map((cat) {
+          final isSelected = selected == cat;
+          final color = cat == 'All' ? ObTokens.iris : _bodyPartColor(cat);
+          final icon = cat == 'All' ? LucideIcons.layoutGrid : _bodyPartIcon(cat);
+          final isLast = cat == _categories.last;
+
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: isLast ? 0 : 8),
               child: GestureDetector(
                 onTap: () => onSelect(cat),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
                   decoration: BoxDecoration(
                     gradient: isSelected
                         ? LinearGradient(
@@ -229,55 +228,76 @@ class _CategoryStrip extends StatelessWidget {
                               color,
                               color == ObTokens.iris
                                   ? ObTokens.sky
-                                  : color.withValues(alpha: 0.7),
+                                  : color.withValues(alpha: 0.72),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           )
                         : null,
-                    color: isSelected ? null : Colors.white.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
+                    color: isSelected
+                        ? null
+                        : Colors.white.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: isSelected
-                          ? Colors.transparent
-                          : Colors.white.withValues(alpha: 0.6),
+                          ? color.withValues(alpha: 0.0)
+                          : Colors.white.withValues(alpha: 0.75),
+                      width: 1.5,
                     ),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: color.withValues(alpha: 0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              color: color.withValues(alpha: 0.38),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
                             ),
                           ]
-                        : null,
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (cat != 'All') ...[
-                        Icon(
-                          _bodyPartIcon(cat),
-                          size: 13,
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.22)
+                              : color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          icon,
+                          size: 17,
                           color: isSelected ? Colors.white : color,
                         ),
-                        const SizedBox(width: 5),
-                      ],
+                      ),
+                      const SizedBox(height: 5),
                       Text(
                         cat,
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : ObTokens.textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected
+                              ? Colors.white
+                              : ObTokens.textMuted,
+                          letterSpacing: 0.1,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            );
-          }).toList(),
-        ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

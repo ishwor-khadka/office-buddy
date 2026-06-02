@@ -25,6 +25,8 @@ import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/account/presentation/account_screen.dart';
 import '../../features/hydration/presentation/hydration_screen.dart';
 import '../../features/permissions/presentation/permission_onboarding_screen.dart';
+import '../../features/finance/presentation/expense_analytics_screen.dart';
+import '../../features/finance/presentation/lend_borrow_analytics_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -147,6 +149,14 @@ GoRouter _createAppRouter() {
         path: AppRoutes.hydrationScreen,
         builder: (context, state) => const HydrationScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.financeAnalyticsScreen,
+        builder: (context, state) => const ExpenseAnalyticsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.financeLendBorrowAnalyticsScreen,
+        builder: (context, state) => const LendBorrowAnalyticsScreen(),
+      ),
     ],
   );
 }
@@ -175,8 +185,7 @@ class MainScaffold extends ConsumerStatefulWidget {
 }
 
 class _MainScaffoldState extends ConsumerState<MainScaffold> {
-  int _currentIndex = 0;
-  final ValueNotifier<int> _tabRefreshTick = ValueNotifier<int>(0);
+  final ValueNotifier<int> _currentIndex = ValueNotifier<int>(0);
 
   static const List<Widget> _screens = <Widget>[
     HomeScreen(),
@@ -185,13 +194,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
 
   @override
   void dispose() {
-    _tabRefreshTick.dispose();
+    _currentIndex.dispose();
     super.dispose();
-  }
-
-  void _selectTab(int index) {
-    _currentIndex = index.clamp(0, _screens.length - 1);
-    _tabRefreshTick.value++;
   }
 
   @override
@@ -199,14 +203,18 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     ref.watch(stepActivityControllerProvider);
 
     return ValueListenableBuilder<int>(
-      valueListenable: _tabRefreshTick,
-      builder: (context, _, child) {
+      valueListenable: _currentIndex,
+      builder: (context, index, child) {
         return Scaffold(
           extendBody: true,
-          body: _screens[_currentIndex],
+          body: IndexedStack(
+            index: index,
+            children: _screens,
+          ),
           bottomNavigationBar: ObBottomBar(
-            currentIndex: _currentIndex,
-            onSelect: _selectTab,
+            currentIndex: index,
+            onSelect: (i) =>
+                _currentIndex.value = i.clamp(0, _screens.length - 1),
           ),
         );
       },
