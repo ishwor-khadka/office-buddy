@@ -46,12 +46,13 @@ class PostureClassifier {
       );
     }
 
-    final shoulderMidX = (leftShoulder.x + rightShoulder.x) / 2.0;
     final shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2.0;
-    final shoulderWidth = (leftShoulder.x - rightShoulder.x).abs().clamp(1.0, 99999.0);
+    final shoulderWidth =
+        (leftShoulder.x - rightShoulder.x).abs().clamp(1.0, 99999.0);
 
     // Lateral tilt: shoulders not level.
-    final shoulderTilt = (leftShoulder.y - rightShoulder.y).abs() / shoulderWidth;
+    final shoulderTilt =
+        (leftShoulder.y - rightShoulder.y).abs() / shoulderWidth;
     if (shoulderTilt > 0.12) {
       return const PostureClassification(
         result: PostureResult.needsCorrection,
@@ -60,12 +61,18 @@ class PostureClassifier {
       );
     }
 
-    // Tech neck: head (nose/ear) is significantly forward from shoulder midpoint.
-    final headX = ((leftEar?.x ?? nose.x) + (rightEar?.x ?? nose.x)) /
-        ((leftEar != null && rightEar != null) ? 2.0 : 1.0);
-    final forward = (headX - shoulderMidX).abs() / shoulderWidth;
+    // Correct ear mid-Y: when only one ear is visible, use it directly.
+    // (Previous formula added ear.x + nose.x and divided by 1.0 — a sum, not an average.)
+    final double earMidY = (leftEar != null && rightEar != null)
+        ? (leftEar.y + rightEar.y) / 2.0
+        : (leftEar ?? rightEar)!.y;
 
-    if (forward > 0.22) {
+    // Tech neck (front camera): when head cranes forward the ears drop toward
+    // shoulder level. Y increases downward, so in good posture shoulderMidY > earMidY.
+    // neckRatio = how many shoulder-widths the ears sit above the shoulders.
+    // Typical healthy range: 0.40–0.90. Below 0.28 → forward-head posture.
+    final neckRatio = (shoulderMidY - earMidY) / shoulderWidth;
+    if (neckRatio < 0.28) {
       return const PostureClassification(
         result: PostureResult.needsCorrection,
         issueType: PostureIssueType.techNeck,
@@ -73,10 +80,11 @@ class PostureClassifier {
       );
     }
 
-    // Rounded shoulders: shoulders are far in front of torso line (nose-mid-shoulder alignment).
-    // MVP approximation: if nose is low relative to shoulders and shoulder width is narrow, user may be slouching.
-    final headDrop = (nose.y - shoulderMidY) / shoulderWidth;
-    if (headDrop > 0.35) {
+    // Rounded shoulders / slouch: nose drops toward shoulder level.
+    // noseAbove = how many shoulder-widths the nose sits above the shoulder line.
+    // Typical healthy range: 0.55–1.10. Below 0.40 → slouching.
+    final noseAbove = (shoulderMidY - nose.y) / shoulderWidth;
+    if (noseAbove < 0.40) {
       return const PostureClassification(
         result: PostureResult.needsCorrection,
         issueType: PostureIssueType.roundedShoulders,
@@ -84,7 +92,6 @@ class PostureClassifier {
       );
     }
 
-    // Otherwise: good enough.
     return const PostureClassification(
       result: PostureResult.good,
       issueType: PostureIssueType.none,

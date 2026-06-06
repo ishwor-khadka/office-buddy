@@ -44,6 +44,9 @@ class NotificationService {
   static const String _notificationIcon = 'ic_notification';
 
   static const int _hydrationBaseId = 700000;
+  // Snooze pair uses fixed IDs just below baseId (even=main, odd=follow-up).
+  static const int _hydrationSnoozeBaseId = 699998;
+  static const int _hydrationFollowUpDelayMinutes = 5;
 
   // Time-of-day hydration titles
   static const List<String> _hydrationMorningTitles = <String>[
@@ -233,10 +236,11 @@ class NotificationService {
     );
   }
 
-  static Future<void> showHydrationReminder({
+  static Future<void> _scheduleOneHydrationNotification({
     required int id,
     required String title,
     required String body,
+    required DateTime at,
     required String actionLabel,
   }) async {
     final android = AndroidNotificationDetails(
@@ -271,18 +275,28 @@ class NotificationService {
         ),
       ],
     );
-
-    const darwin = DarwinNotificationDetails(
-      categoryIdentifier: 'hydration',
-    );
-
-    await _plugin.show(
-      id: id,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(android: android, iOS: darwin),
-      payload: hydrationPayload,
-    );
+    const darwin = DarwinNotificationDetails(categoryIdentifier: 'hydration');
+    try {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(at, tz.local),
+        notificationDetails: NotificationDetails(android: android, iOS: darwin),
+        payload: hydrationPayload,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (_) {
+      await _plugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tz.TZDateTime.from(at, tz.local),
+        notificationDetails: NotificationDetails(android: android, iOS: darwin),
+        payload: hydrationPayload,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+    }
   }
 
   static Future<void> rescheduleHydrationReminders({
@@ -313,7 +327,7 @@ class NotificationService {
         final inLunch = schedule.isLunchTime(atMinutes);
         if (!inLunch && at.isAfter(now)) {
           await _scheduleHydrationAt(
-            id: _hydrationIdFor(date, slot),
+            id: _hydrationMainIdFor(date, slot),
             at: at,
             hour: at.hour,
           );
@@ -330,15 +344,16 @@ class NotificationService {
     final hydrationCount =
         pending.where((r) => r.payload == hydrationPayload).length;
     // Rearm when fewer than 6 future slots remain (less than ~1 day's worth).
-    if (hydrationCount < 6) {
+    if (hydrationCount < 12) {
       await rescheduleHydrationReminders(schedule: schedule, daysAhead: 7);
     }
   }
 
-  static int _hydrationIdFor(DateTime date, int slot) {
+  // Even ID = main notification; odd ID = follow-up (main + 1).
+  static int _hydrationMainIdFor(DateTime date, int slot) {
     final yy = date.year % 100;
     final dayOfYear = _dayOfYear(date);
-    return _hydrationBaseId + yy * 4000 + dayOfYear * 10 + slot;
+    return _hydrationBaseId + yy * 8000 + dayOfYear * 20 + slot * 2;
   }
 
   static int _dayOfYear(DateTime d) {
@@ -360,6 +375,7 @@ class NotificationService {
     return pool[seed.abs() % pool.length];
   }
 
+  // id must be even (main); follow-up is automatically scheduled at id+1.
   static Future<void> _scheduleHydrationAt({
     required int id,
     required DateTime at,
@@ -370,64 +386,22 @@ class NotificationService {
     final body = hydrationBodies[(seed ~/ 7).abs() % hydrationBodies.length];
     final actionLabel =
         hydrationActionLabels[(seed ~/ 13).abs() % hydrationActionLabels.length];
+    final bodyText = '$body (+250 mL)';
 
-    final android = AndroidNotificationDetails(
-      hydrationChannelId,
-      hydrationChannelName,
-      channelDescription: hydrationChannelDescription,
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
-      autoCancel: true,
-      category: AndroidNotificationCategory.reminder,
-      visibility: NotificationVisibility.public,
-      groupKey: _hydrationGroupKey,
-      icon: _notificationIcon,
-      actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
-          hydrationActionId,
-          actionLabel,
-          showsUserInterface: true,
-          cancelNotification: true,
-        ),
-        const AndroidNotificationAction(
-          hydrationSnoozeActionId,
-          'Snooze 15m',
-          showsUserInterface: false,
-          cancelNotification: true,
-        ),
-        const AndroidNotificationAction(
-          hydrationSkipDayActionId,
-          'Skip today',
-          showsUserInterface: false,
-          cancelNotification: true,
-        ),
-      ],
+    await _scheduleOneHydrationNotification(
+      id: id,
+      title: title,
+      body: bodyText,
+      at: at,
+      actionLabel: actionLabel,
     );
-
-    const darwin = DarwinNotificationDetails(categoryIdentifier: 'hydration');
-
-    try {
-      await _plugin.zonedSchedule(
-        id: id,
-        title: title,
-        body: '$body (+250 mL)',
-        scheduledDate: tz.TZDateTime.from(at, tz.local),
-        notificationDetails: NotificationDetails(android: android, iOS: darwin),
-        payload: hydrationPayload,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
-    } catch (error) {
-      debugPrint('Exact schedule failed, falling back to inexact: $error');
-      await _plugin.zonedSchedule(
-        id: id,
-        title: title,
-        body: '$body (+250 mL)',
-        scheduledDate: tz.TZDateTime.from(at, tz.local),
-        notificationDetails: NotificationDetails(android: android, iOS: darwin),
-        payload: hydrationPayload,
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      );
-    }
+    await _scheduleOneHydrationNotification(
+      id: id + 1,
+      title: title,
+      body: bodyText,
+      at: at.add(const Duration(minutes: _hydrationFollowUpDelayMinutes)),
+      actionLabel: actionLabel,
+    );
   }
 
   static Future<void> _cancelHydrationSchedules() async {
@@ -457,27 +431,26 @@ class NotificationService {
         actionId == hydrationSkipDayActionId;
 
     if (isHydrationPayload || isHydrationAction) {
-      if (id != null) await _plugin.cancel(id: id);
+      if (id != null) {
+        await _plugin.cancel(id: id);
+        // Cancel the paired notification: even=main cancels odd=follow-up, vice versa.
+        final pairedId = id.isEven ? id + 1 : id - 1;
+        await _plugin.cancel(id: pairedId);
+      }
 
       if (actionId == hydrationActionId) {
         final nowMs = DateTime.now().millisecondsSinceEpoch;
         await _hydrationRepository.addHydrationEntry(timestampMillis: nowMs);
-        await _hydrationRepository.clearPendingPrompt();
-        await _hydrationRepository.clearHydrationSnooze();
       } else if (actionId == hydrationSnoozeActionId) {
-        final snoozeUntil = DateTime.now()
-            .add(const Duration(minutes: 15))
-            .millisecondsSinceEpoch;
-        await _hydrationRepository.setHydrationSnoozeUntil(snoozeUntil);
-        await _hydrationRepository.clearPendingPrompt();
+        final snoozeAt = DateTime.now().add(const Duration(minutes: 15));
+        await _scheduleHydrationAt(
+          id: _hydrationSnoozeBaseId,
+          at: snoozeAt,
+          hour: snoozeAt.hour,
+        );
       } else if (actionId == hydrationSkipDayActionId) {
         await _hydrationRepository.skipTodayHydration(DateTime.now());
-        await _hydrationRepository.clearPendingPrompt();
-        // Cancel all remaining hydration notifications for today.
         await _cancelHydrationSchedules();
-      } else {
-        // Body tap — user acknowledged but didn't log; just clear pending.
-        await _hydrationRepository.clearPendingPrompt();
       }
       return;
     }

@@ -60,8 +60,6 @@ class _HydrationScreenState extends State<HydrationScreen> {
     final now = DateTime.now();
     final schedule = await _officeScheduleRepository.load();
     final entries = await _hydrationRepository.loadEntries();
-    final pendingSince = await _hydrationRepository.getPendingSinceMillis();
-    final retryCount = await _hydrationRepository.getPendingRetryCount();
 
     final todayEntries =
         entries
@@ -94,10 +92,6 @@ class _HydrationScreenState extends State<HydrationScreen> {
       schedule: schedule,
       todayDrinkCount: todayEntries.length,
       lastDrinkTime: todayEntries.isEmpty ? null : todayEntries.first.time,
-      pendingSince: pendingSince == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(pendingSince),
-      retryCount: retryCount,
     );
 
     return _HydrationViewData(
@@ -142,8 +136,6 @@ class _HydrationScreenState extends State<HydrationScreen> {
     required OfficeSchedule schedule,
     required int todayDrinkCount,
     required DateTime? lastDrinkTime,
-    required DateTime? pendingSince,
-    required int retryCount,
   }) {
     if (schedule.offDays.contains(now.weekday)) return null;
     if (todayDrinkCount >= _maxDoseCount) return null;
@@ -156,14 +148,6 @@ class _HydrationScreenState extends State<HydrationScreen> {
       Duration(minutes: schedule.workEndMinutes - _endOffsetMinutes),
     );
     if (!first.isBefore(last)) return null;
-
-    if (pendingSince != null) {
-      if (retryCount < 1) {
-        final retryAt = pendingSince.add(const Duration(minutes: 3));
-        return retryAt.isAfter(last) ? null : retryAt;
-      }
-      return pendingSince;
-    }
 
     if (now.isBefore(first)) return first;
     if (lastDrinkTime == null) return now.isAfter(last) ? null : now;

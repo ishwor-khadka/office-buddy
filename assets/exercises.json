@@ -76,16 +76,17 @@
     },
 
     {
-      "id": "back_cat_cow",
-      "title": "Cat-Cow Stretch",
+      "id": "back_shoulder_blade_squeeze",
+      "title": "Shoulder Blade Squeeze",
       "bodyPart": "Back",
       "difficulty": "Easy",
-      "durationSeconds": 120,
+      "durationSeconds": 60,
       "instructions": [
-        "Sit or stand with hands on thighs.",
-        "Inhale: lift chest and arch back gently.",
-        "Exhale: round spine and tuck chin.",
-        "Move slowly with breath."
+        "Sit or stand tall with arms at your sides.",
+        "Draw shoulder blades together and down toward your spine.",
+        "Hold for 5 seconds, then release.",
+        "Keep neck long and relaxed throughout.",
+        "Repeat 8–10 times."
       ]
     },
     {
@@ -127,15 +128,17 @@
       ]
     },
     {
-      "id": "back_glute_bridges",
-      "title": "Glute Bridges (Desk Version)",
+      "id": "back_desk_hip_hinge",
+      "title": "Desk Hip Hinge Stretch",
       "bodyPart": "Back",
       "difficulty": "Medium",
-      "durationSeconds": 120,
+      "durationSeconds": 90,
       "instructions": [
-        "Stand and squeeze glutes for 3 seconds.",
-        "Relax for 3 seconds.",
-        "Repeat."
+        "Stand facing your desk, place both hands on the edge.",
+        "Step back until your arms are fully extended.",
+        "Hinge at the hips, keeping your back flat and parallel to the floor.",
+        "Hold for 20 seconds and feel the stretch along your entire back.",
+        "Slowly walk forward and stand tall. Repeat 3 times."
       ]
     },
     {

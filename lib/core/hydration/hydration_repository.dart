@@ -7,13 +7,7 @@ import '../firebase/firebase_bootstrap.dart';
 
 class HydrationRepository {
   static const _kHydrationEntries = 'hydration_entries_v1';
-  static const _kHydrationPendingSinceMs = 'hydration_pending_since_ms';
-  static const _kHydrationPendingNotificationId =
-      'hydration_pending_notification_id';
-  static const _kHydrationPendingRetryCount = 'hydration_pending_retry_count';
   static const _kHydrationLastAckAtMs = 'hydration_last_ack_at_ms';
-  static const _kHydrationLastPromptAtMs = 'hydration_last_prompt_at_ms';
-  static const _kHydrationSnoozeUntilMs = 'hydration_snooze_until_ms';
   static const _kHydrationSkipDayDate = 'hydration_skip_day_date';
   static const _collectionUsers = 'users';
   static const _collectionHydrationLogs = 'hydration_logs';
@@ -147,65 +141,6 @@ class HydrationRepository {
     } catch (error) {
       debugPrint('Failed to save hydration log to Firebase: $error');
     }
-  }
-
-  Future<void> clearPendingPrompt() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kHydrationPendingSinceMs);
-    await prefs.remove(_kHydrationPendingNotificationId);
-    await prefs.remove(_kHydrationPendingRetryCount);
-  }
-
-  Future<void> setPendingPrompt({
-    required int sinceMillis,
-    required int notificationId,
-    required int retryCount,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kHydrationPendingSinceMs, sinceMillis);
-    await prefs.setInt(_kHydrationPendingNotificationId, notificationId);
-    await prefs.setInt(_kHydrationPendingRetryCount, retryCount);
-    await prefs.setInt(_kHydrationLastPromptAtMs, sinceMillis);
-  }
-
-  Future<int?> getPendingSinceMillis() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kHydrationPendingSinceMs);
-  }
-
-  Future<int?> getPendingNotificationId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kHydrationPendingNotificationId);
-  }
-
-  Future<int> getPendingRetryCount() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kHydrationPendingRetryCount) ?? 0;
-  }
-
-  Future<int?> getLastAcknowledgedAtMillis() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kHydrationLastAckAtMs);
-  }
-
-  Future<int?> getLastPromptAtMillis() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kHydrationLastPromptAtMs);
-  }
-
-  Future<void> setHydrationSnoozeUntil(int millisSinceEpoch) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kHydrationSnoozeUntilMs, millisSinceEpoch);
-  }
-
-  Future<int?> getHydrationSnoozeUntilMillis() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kHydrationSnoozeUntilMs);
-  }
-
-  Future<void> clearHydrationSnooze() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kHydrationSnoozeUntilMs);
   }
 
   Future<void> skipTodayHydration(DateTime date) async {
